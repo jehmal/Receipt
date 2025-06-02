@@ -1,0 +1,93 @@
+# Claude Code Allowed Tools Configuration
+# Copy these to your /allowed-tools command or .claude/settings.json
+
+# Core Development Tools
+"Bash(npm run dev:*)",
+"Bash(npm run build:*)",
+"Bash(npm run test:*)",
+"Bash(npm run lint:*)",
+"Bash(npm run lint:fix:*)",
+"Bash(npm run format:*)",
+"Bash(npm run db:migrate:*)",
+"Bash(npm run db:seed:*)",
+"Bash(npm install:*)",
+"Bash(npm ci:*)",
+"Bash(npx tsx:*)",
+
+# Flutter Development
+"Bash(flutter run:*)",
+"Bash(flutter test:*)",
+"Bash(flutter analyze:*)",
+"Bash(flutter build:*)",
+"Bash(flutter packages pub run build_runner build:*)",
+"Bash(flutter packages pub get:*)",
+"Bash(flutter clean:*)",
+
+# Docker & Infrastructure
+"Bash(docker-compose up:*)",
+"Bash(docker-compose down:*)",
+"Bash(docker-compose exec:*)",
+"Bash(docker-compose logs:*)",
+"Bash(docker ps:*)",
+"Bash(docker logs:*)",
+
+# Database Operations
+"Bash(psql:*)",
+"Bash(redis-cli:*)",
+
+# Network & API Testing
+"Bash(curl:*)",
+"Bash(wget:*)",
+
+# Git Operations
+"Bash(git add:*)",
+"Bash(git commit:*)",
+"Bash(git push:*)",
+"Bash(git pull:*)",
+"Bash(git status:*)",
+"Bash(git diff:*)",
+"Bash(git log:*)",
+"Bash(git branch:*)",
+"Bash(git checkout:*)",
+"Bash(git merge:*)",
+"Bash(gh:*)",
+
+# File Operations
+"Bash(rg:*)",
+"Bash(grep:*)",
+"Bash(find:*)",
+"Bash(ls:*)",
+"Bash(cat:*)",
+"Bash(mkdir:*)",
+"Bash(rm:*)",
+"Bash(cp:*)",
+"Bash(mv:*)",
+"Bash(chmod:*)",
+"Bash(touch:*)",
+
+# Process Management
+"Bash(kill:*)",
+"Bash(pkill:*)",
+"Bash(timeout:*)",
+
+# System Operations
+"Bash(export:*)",
+"Bash(echo:*)",
+"Bash(tar:*)",
+"Bash(unzip:*)",
+
+# Claude Code Tools
+"Read",
+"Edit",
+"MultiEdit",
+"Write",
+"Glob",
+"Grep",
+"LS",
+"TodoWrite",
+"TodoRead",
+"Task",
+"WebSearch",
+"WebFetch",
+"NotebookRead",
+"NotebookEdit"

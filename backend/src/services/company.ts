@@ -717,3 +717,17 @@ class CompanyService {
 }
 
 export const companyService = new CompanyService();
+
+// Export individual functions for controllers
+export const createCompany = companyService.createCompany.bind(companyService);
+export const getCompanies = companyService.getCompanies.bind(companyService);
+export const getCompanyById = companyService.getCompanyById.bind(companyService);
+export const updateCompany = companyService.updateCompany.bind(companyService);
+export const updateCompanyStatus = companyService.updateCompanyStatus.bind(companyService);
+export const deleteCompany = companyService.deleteCompany.bind(companyService);
+export const inviteUser = companyService.inviteUser.bind(companyService);
+export const acceptInvitation = companyService.acceptInvitation.bind(companyService);
+export const getCompanyMembers = companyService.getCompanyMembers.bind(companyService);
+export const updateMemberRole = companyService.updateMemberRole.bind(companyService);
+export const removeMember = companyService.removeMember.bind(companyService);
+export const getCompanyAnalytics = companyService.getCompanyAnalytics.bind(companyService);

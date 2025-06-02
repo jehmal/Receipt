@@ -1,0 +1,181 @@
+{
+  "version": "1.0",
+  "description": "Optimal Claude Code settings for Receipt Vault development",
+  
+  "tool_permissions": {
+    "enabled": true,
+    "auto_approve": [
+      "Read",
+      "LS", 
+      "Glob",
+      "Grep",
+      "TodoRead",
+      "TodoWrite"
+    ],
+    "require_approval": [
+      "Write",
+      "Edit",
+      "MultiEdit",
+      "Bash(rm:*)",
+      "Bash(docker-compose down:*)",
+      "Bash(git push:*)",
+      "Bash(npm publish:*)"
+    ],
+    "bash_patterns": {
+      "auto_approve": [
+        "npm run dev:*",
+        "npm run test:*",
+        "npm run build:*",
+        "npm run lint:*",
+        "flutter test:*",
+        "flutter analyze:*",
+        "git status:*",
+        "git diff:*",
+        "git log:*",
+        "docker ps:*",
+        "docker logs:*",
+        "ls:*",
+        "cat:*",
+        "grep:*",
+        "rg:*",
+        "find:*"
+      ],
+      "require_approval": [
+        "rm:*",
+        "sudo:*",
+        "chmod 777:*",
+        "git push:*",
+        "docker-compose down:*",
+        "npm install:* --global",
+        "flutter clean:*"
+      ]
+    }
+  },
+
+  "memory_settings": {
+    "claude_md_auto_read": true,
+    "project_context_limit": 50,
+    "conversation_memory": "extended",
+    "context_compression": "smart"
+  },
+
+  "development_preferences": {
+    "todo_management": {
+      "auto_create_todos": true,
+      "track_progress": true,
+      "require_completion_confirmation": true
+    },
+    
+    "code_style": {
+      "follow_existing_patterns": true,
+      "run_formatters": true,
+      "check_linting": true,
+      "require_tests": true
+    },
+
+    "git_workflow": {
+      "auto_stage_related_files": false,
+      "require_commit_messages": true,
+      "follow_conventional_commits": true,
+      "create_pr_descriptions": true
+    },
+
+    "testing": {
+      "run_tests_before_commit": true,
+      "require_test_coverage": true,
+      "test_driven_development": true
+    }
+  },
+
+  "project_specific": {
+    "backend": {
+      "package_manager": "npm",
+      "test_command": "npm test",
+      "dev_command": "npm run dev",
+      "build_command": "npm run build",
+      "lint_command": "npm run lint:fix",
+      "format_command": "npm run format"
+    },
+    
+    "mobile": {
+      "framework": "flutter",
+      "test_command": "flutter test",
+      "dev_command": "flutter run",
+      "build_command": "flutter build",
+      "analyze_command": "flutter analyze",
+      "format_command": "dart format",
+      "code_gen_command": "flutter packages pub run build_runner build"
+    },
+
+    "infrastructure": {
+      "container_manager": "docker-compose",
+      "start_command": "docker-compose up -d",
+      "stop_command": "docker-compose down",
+      "logs_command": "docker-compose logs"
+    }
+  },
+
+  "file_patterns": {
+    "ignore_patterns": [
+      "node_modules/**",
+      ".git/**",
+      "dist/**",
+      "build/**",
+      ".flutter-plugins*",
+      "*.log",
+      ".env",
+      "coverage/**",
+      ".nyc_output/**"
+    ],
+    
+    "important_files": [
+      "CLAUDE.md",
+      "README.md",
+      "package.json",
+      "pubspec.yaml",
+      "docker-compose.yml",
+      "tsconfig.json",
+      ".env.example"
+    ],
+
+    "auto_include_in_context": [
+      "backend/src/**/*.ts",
+      "mobile/lib/**/*.dart",
+      "database/*.sql",
+      "*.md",
+      "*.json",
+      "*.yml",
+      "*.yaml"
+    ]
+  },
+
+  "safety_settings": {
+    "prevent_data_loss": true,
+    "backup_before_major_changes": true,
+    "require_confirmation_for_deletion": true,
+    "validate_commands_before_execution": true
+  },
+
+  "productivity_features": {
+    "smart_search": true,
+    "context_aware_suggestions": true,
+    "auto_complete_todos": true,
+    "progress_tracking": true,
+    "time_estimation": true
+  },
+
+  "notification_preferences": {
+    "notify_on_completion": true,
+    "notify_on_errors": true,
+    "progress_updates": true,
+    "test_results": true
+  },
+
+  "ai_behavior": {
+    "explain_decisions": true,
+    "ask_clarifying_questions": true,
+    "suggest_improvements": true,
+    "follow_best_practices": true,
+    "provide_learning_opportunities": true
+  }
+}
