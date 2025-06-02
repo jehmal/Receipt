@@ -258,16 +258,157 @@ const receiptRoutes: FastifyPluginAsync = async (fastify) => {
         required: ['format'],
         properties: {
           format: { type: 'string', enum: ['pdf', 'csv', 'excel'] },
-          startDate: { type: 'string', format: 'date' },
-          endDate: { type: 'string', format: 'date' },
-          category: { type: 'string' },
           receiptIds: { type: 'array', items: { type: 'string', format: 'uuid' } },
+          dateFrom: { type: 'string', format: 'date' },
+          dateTo: { type: 'string', format: 'date' },
+          category: { type: 'string' },
+          tags: { type: 'array', items: { type: 'string' } },
+          merchantName: { type: 'string' },
+          amountMin: { type: 'number', minimum: 0 },
+          amountMax: { type: 'number', minimum: 0 },
+          status: { type: 'string', enum: ['uploaded', 'processing', 'processed', 'failed'] },
+          requiresApproval: { type: 'boolean' },
+          approvedBy: { type: 'string', format: 'uuid' },
+          includeImages: { type: 'boolean', default: false },
+          includeOcrText: { type: 'boolean', default: false },
+          groupByCategory: { type: 'boolean', default: false },
+          groupByMerchant: { type: 'boolean', default: false },
+          sortBy: { type: 'string', enum: ['date', 'amount', 'merchant', 'category'], default: 'date' },
+          sortOrder: { type: 'string', enum: ['asc', 'desc'], default: 'desc' },
+          template: { type: 'string', enum: ['summary', 'detailed', 'financial'], default: 'detailed' },
+          customFields: { type: 'array', items: { type: 'string' } }
         },
       },
     },
   }, async (request, reply) => {
-    // TODO: Implement receipt export
-    reply.status(501).send({ message: 'Export receipts endpoint not implemented yet' });
+    try {
+      const user = (request as any).user;
+      const exportParams = request.body as any;
+
+      // Import export service
+      const { exportService } = await import('@/services/export');
+
+      // Prepare filters
+      const filters = {
+        userId: user.id,
+        companyId: user.companyId,
+        receiptIds: exportParams.receiptIds,
+        dateFrom: exportParams.dateFrom ? new Date(exportParams.dateFrom) : undefined,
+        dateTo: exportParams.dateTo ? new Date(exportParams.dateTo) : undefined,
+        category: exportParams.category,
+        tags: exportParams.tags,
+        merchantName: exportParams.merchantName,
+        amountMin: exportParams.amountMin,
+        amountMax: exportParams.amountMax,
+        status: exportParams.status,
+        requiresApproval: exportParams.requiresApproval,
+        approvedBy: exportParams.approvedBy
+      };
+
+      // Prepare options
+      const options = {
+        format: exportParams.format,
+        includeImages: exportParams.includeImages,
+        includeOcrText: exportParams.includeOcrText,
+        groupByCategory: exportParams.groupByCategory,
+        groupByMerchant: exportParams.groupByMerchant,
+        sortBy: exportParams.sortBy,
+        sortOrder: exportParams.sortOrder,
+        template: exportParams.template,
+        customFields: exportParams.customFields
+      };
+
+      // Create export job
+      const job = await exportService.createExportJob(user.id, filters, options);
+
+      reply.code(202).send({
+        success: true,
+        message: 'Export job created successfully',
+        data: {
+          jobId: job.id,
+          status: job.status,
+          progress: job.progress,
+          format: job.format,
+          createdAt: job.createdAt,
+          expiresAt: job.expiresAt
+        }
+      });
+    } catch (error: any) {
+      reply.code(400).send({
+        success: false,
+        message: error.message || 'Failed to create export job'
+      });
+    }
+  });
+
+  // Get export job status
+  fastify.get('/export/:jobId', {
+    preHandler: [fastify.authenticate],
+    schema: {
+      params: {
+        type: 'object',
+        properties: {
+          jobId: { type: 'string', format: 'uuid' }
+        },
+        required: ['jobId']
+      }
+    }
+  }, async (request, reply) => {
+    try {
+      const user = (request as any).user;
+      const { jobId } = request.params as any;
+
+      const { exportService } = await import('@/services/export');
+      const job = await exportService.getExportJob(jobId, user.id);
+
+      if (!job) {
+        return reply.code(404).send({
+          success: false,
+          message: 'Export job not found'
+        });
+      }
+
+      reply.send({
+        success: true,
+        data: job
+      });
+    } catch (error: any) {
+      reply.code(500).send({
+        success: false,
+        message: error.message || 'Failed to get export job status'
+      });
+    }
+  });
+
+  // Get user's export jobs
+  fastify.get('/export', {
+    preHandler: [fastify.authenticate],
+    schema: {
+      querystring: {
+        type: 'object',
+        properties: {
+          limit: { type: 'integer', minimum: 1, maximum: 50, default: 10 }
+        }
+      }
+    }
+  }, async (request, reply) => {
+    try {
+      const user = (request as any).user;
+      const { limit } = request.query as any;
+
+      const { exportService } = await import('@/services/export');
+      const jobs = await exportService.getUserExportJobs(user.id, limit);
+
+      reply.send({
+        success: true,
+        data: jobs
+      });
+    } catch (error: any) {
+      reply.code(500).send({
+        success: false,
+        message: error.message || 'Failed to get export jobs'
+      });
+    }
   });
 
   // Get receipt analytics

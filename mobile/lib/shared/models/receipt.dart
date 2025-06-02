@@ -1,147 +1,168 @@
 import 'package:hive/hive.dart';
+import 'package:json_annotation/json_annotation.dart';
 
 part 'receipt.g.dart';
 
+@JsonSerializable()
 @HiveType(typeId: 0)
 class Receipt extends HiveObject {
+  @JsonKey(name: 'id')
   @HiveField(0)
   String id;
 
+  @JsonKey(name: 'userId')
   @HiveField(1)
   String userId;
 
+  @JsonKey(name: 'companyId')
   @HiveField(2)
   String? companyId;
 
+  @JsonKey(name: 'originalFilename')
   @HiveField(3)
-  String imagePath;
+  String? originalFilename;
 
+  @JsonKey(name: 'filePath')
   @HiveField(4)
-  String? ocrText;
+  String? filePath;
 
+  @JsonKey(name: 'fileSize')
   @HiveField(5)
-  double? amount;
+  int? fileSize;
 
+  @JsonKey(name: 'fileHash')
   @HiveField(6)
+  String? fileHash;
+
+  @JsonKey(name: 'mimeType')
+  @HiveField(7)
+  String? mimeType;
+
+  @JsonKey(name: 'status')
+  @HiveField(8)
+  String status; // 'uploaded', 'processing', 'processed', 'failed'
+
+  @JsonKey(name: 'vendorName')
+  @HiveField(9)
+  String? vendorName;
+
+  @JsonKey(name: 'totalAmount')
+  @HiveField(10)
+  double? totalAmount;
+
+  @JsonKey(name: 'currency')
+  @HiveField(11)
   String? currency;
 
-  @HiveField(7)
-  String? vendor;
+  @JsonKey(name: 'receiptDate')
+  @HiveField(12)
+  DateTime? receiptDate;
 
-  @HiveField(8)
+  @JsonKey(name: 'category')
+  @HiveField(13)
   String? category;
 
-  @HiveField(9)
-  DateTime date;
-
-  @HiveField(10)
-  DateTime createdAt;
-
-  @HiveField(11)
-  DateTime updatedAt;
-
-  @HiveField(12)
+  @JsonKey(name: 'description')
+  @HiveField(14)
   String? description;
 
-  @HiveField(13)
+  @JsonKey(name: 'tags')
+  @HiveField(15)
   List<String> tags;
 
-  @HiveField(14)
-  String fileHash;
-
-  @HiveField(15)
-  bool isProcessed;
-
+  @JsonKey(name: 'thumbnailPath')
   @HiveField(16)
+  String? thumbnailPath;
+
+  @JsonKey(name: 'ocrText')
+  @HiveField(17)
+  String? ocrText;
+
+  @JsonKey(name: 'ocrConfidence')
+  @HiveField(18)
+  double? ocrConfidence;
+
+  @JsonKey(name: 'createdAt')
+  @HiveField(19)
+  DateTime createdAt;
+
+  @JsonKey(name: 'updatedAt')
+  @HiveField(20)
+  DateTime updatedAt;
+
+  // Local-only fields for mobile app
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @HiveField(21)
+  String? localImagePath;
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @HiveField(22)
   bool isSynced;
 
-  @HiveField(17)
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @HiveField(23)
   String? syncError;
 
   Receipt({
     required this.id,
     required this.userId,
     this.companyId,
-    required this.imagePath,
-    this.ocrText,
-    this.amount,
+    this.originalFilename,
+    this.filePath,
+    this.fileSize,
+    this.fileHash,
+    this.mimeType,
+    this.status = 'uploaded',
+    this.vendorName,
+    this.totalAmount,
     this.currency = 'USD',
-    this.vendor,
+    this.receiptDate,
     this.category,
-    required this.date,
-    required this.createdAt,
-    required this.updatedAt,
     this.description,
     this.tags = const [],
-    required this.fileHash,
-    this.isProcessed = false,
+    this.thumbnailPath,
+    this.ocrText,
+    this.ocrConfidence,
+    required this.createdAt,
+    required this.updatedAt,
+    this.localImagePath,
     this.isSynced = false,
     this.syncError,
   });
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'userId': userId,
-      'companyId': companyId,
-      'imagePath': imagePath,
-      'ocrText': ocrText,
-      'amount': amount,
-      'currency': currency,
-      'vendor': vendor,
-      'category': category,
-      'date': date.toIso8601String(),
-      'createdAt': createdAt.toIso8601String(),
-      'updatedAt': updatedAt.toIso8601String(),
-      'description': description,
-      'tags': tags,
-      'fileHash': fileHash,
-      'isProcessed': isProcessed,
-      'isSynced': isSynced,
-      'syncError': syncError,
-    };
-  }
+  // Computed properties for backward compatibility
+  String? get vendor => vendorName;
+  double? get amount => totalAmount;
+  DateTime? get date => receiptDate;
+  String? get imagePath => localImagePath ?? filePath;
+  bool get isProcessed => status == 'processed';
 
-  factory Receipt.fromJson(Map<String, dynamic> json) {
-    return Receipt(
-      id: json['id'],
-      userId: json['userId'],
-      companyId: json['companyId'],
-      imagePath: json['imagePath'],
-      ocrText: json['ocrText'],
-      amount: json['amount']?.toDouble(),
-      currency: json['currency'] ?? 'USD',
-      vendor: json['vendor'],
-      category: json['category'],
-      date: DateTime.parse(json['date']),
-      createdAt: DateTime.parse(json['createdAt']),
-      updatedAt: DateTime.parse(json['updatedAt']),
-      description: json['description'],
-      tags: List<String>.from(json['tags'] ?? []),
-      fileHash: json['fileHash'],
-      isProcessed: json['isProcessed'] ?? false,
-      isSynced: json['isSynced'] ?? false,
-      syncError: json['syncError'],
-    );
-  }
+  factory Receipt.fromJson(Map<String, dynamic> json) => _$ReceiptFromJson(json);
+  Map<String, dynamic> toJson() => _$ReceiptToJson(this);
 
   Receipt copyWith({
     String? id,
     String? userId,
     String? companyId,
-    String? imagePath,
-    String? ocrText,
-    double? amount,
+    String? originalFilename,
+    String? filePath,
+    int? fileSize,
+    String? fileHash,
+    String? mimeType,
+    String? status,
+    String? vendorName,
+    double? totalAmount,
     String? currency,
-    String? vendor,
+    DateTime? receiptDate,
     String? category,
-    DateTime? date,
-    DateTime? createdAt,
-    DateTime? updatedAt,
     String? description,
     List<String>? tags,
-    String? fileHash,
-    bool? isProcessed,
+    String? thumbnailPath,
+    String? ocrText,
+    double? ocrConfidence,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    String? localImagePath,
     bool? isSynced,
     String? syncError,
   }) {
@@ -149,19 +170,25 @@ class Receipt extends HiveObject {
       id: id ?? this.id,
       userId: userId ?? this.userId,
       companyId: companyId ?? this.companyId,
-      imagePath: imagePath ?? this.imagePath,
-      ocrText: ocrText ?? this.ocrText,
-      amount: amount ?? this.amount,
+      originalFilename: originalFilename ?? this.originalFilename,
+      filePath: filePath ?? this.filePath,
+      fileSize: fileSize ?? this.fileSize,
+      fileHash: fileHash ?? this.fileHash,
+      mimeType: mimeType ?? this.mimeType,
+      status: status ?? this.status,
+      vendorName: vendorName ?? this.vendorName,
+      totalAmount: totalAmount ?? this.totalAmount,
       currency: currency ?? this.currency,
-      vendor: vendor ?? this.vendor,
+      receiptDate: receiptDate ?? this.receiptDate,
       category: category ?? this.category,
-      date: date ?? this.date,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
       description: description ?? this.description,
       tags: tags ?? this.tags,
-      fileHash: fileHash ?? this.fileHash,
-      isProcessed: isProcessed ?? this.isProcessed,
+      thumbnailPath: thumbnailPath ?? this.thumbnailPath,
+      ocrText: ocrText ?? this.ocrText,
+      ocrConfidence: ocrConfidence ?? this.ocrConfidence,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      localImagePath: localImagePath ?? this.localImagePath,
       isSynced: isSynced ?? this.isSynced,
       syncError: syncError ?? this.syncError,
     );

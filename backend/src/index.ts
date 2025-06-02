@@ -12,13 +12,13 @@ import { logger } from '@/utils/logger';
 import { errorHandler } from '@/middleware/error-handler';
 import { authPlugin } from '@/middleware/auth';
 
-// Route imports
+// Route imports  
 import authRoutes from '@/routes/auth';
 import receiptRoutes from '@/routes/receipts';
+import companyRoutes from '@/routes/companies';
+import searchRoutes from '@/routes/search';
 // Other routes temporarily disabled for now
 // import userRoutes from '@/routes/users';
-// import companyRoutes from '@/routes/companies';
-// import searchRoutes from '@/routes/search';
 // import adminRoutes from '@/routes/admin';
 
 const server: FastifyInstance = Fastify({
@@ -95,9 +95,9 @@ async function buildServer(): Promise<FastifyInstance> {
     // API routes
     await server.register(authRoutes, { prefix: '/auth' });
     await server.register(receiptRoutes, { prefix: '/receipts' });
+    await server.register(companyRoutes, { prefix: '/companies' });
+    await server.register(searchRoutes, { prefix: '/search' });
     // await server.register(userRoutes, { prefix: '/api/users' });
-    // await server.register(companyRoutes, { prefix: '/api/companies' });
-    // await server.register(searchRoutes, { prefix: '/api/search' });
     // await server.register(adminRoutes, { prefix: '/api/admin' });
 
     // Basic test route

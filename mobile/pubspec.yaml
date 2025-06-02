@@ -17,6 +17,8 @@ dependencies:
   # UI Components
   cupertino_icons: ^1.0.2
   material_design_icons_flutter: ^7.0.7296
+  shimmer: ^3.0.0
+  settings_ui: ^2.0.2
   
   # Camera & Image Processing
   camera: ^0.10.5+2
@@ -26,6 +28,8 @@ dependencies:
   
   # Authentication & Security
   local_auth: ^2.1.6
+  local_auth_android: ^1.0.34
+  local_auth_ios: ^1.0.16
   crypto: ^3.0.3
   
   # Network & Storage
@@ -48,6 +52,7 @@ dependencies:
   permission_handler: ^10.4.3
   share_plus: ^7.0.2
   url_launcher: ^6.1.11
+  device_info_plus: ^9.1.0
   
   # PDF & File Handling
   pdf: ^3.10.4

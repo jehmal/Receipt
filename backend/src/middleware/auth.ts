@@ -1,6 +1,6 @@
 import { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
-import { authService } from '@/services/auth';
+import { authService, jwtService } from '@/services/auth';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -18,6 +18,8 @@ declare module 'fastify' {
       role: string;
       companyId?: string;
     };
+    sessionId?: string;
+    deviceId?: string;
   }
 }
 
@@ -34,12 +36,32 @@ const authPlugin: FastifyPluginAsync = async (fastify) => {
       }
 
       const token = authHeader.substring(7);
-      const user = await authService.getUserFromToken(token);
       
-      if (!user) {
+      // Check if token is blacklisted
+      const isBlacklisted = await authService.isTokenBlacklisted(token);
+      if (isBlacklisted) {
+        return reply.status(401).send({
+          error: 'Unauthorized',
+          message: 'Token has been revoked',
+          statusCode: 401,
+        });
+      }
+
+      // Verify token and get user data
+      const tokenData = await authService.verifyAccessToken(token);
+      if (!tokenData) {
         return reply.status(401).send({
           error: 'Unauthorized',
           message: 'Invalid or expired token',
+          statusCode: 401,
+        });
+      }
+
+      const user = await authService.getUserFromToken(token);
+      if (!user) {
+        return reply.status(401).send({
+          error: 'Unauthorized',
+          message: 'User not found',
           statusCode: 401,
         });
       }
@@ -52,7 +74,10 @@ const authPlugin: FastifyPluginAsync = async (fastify) => {
         role: user.role,
         companyId: user.company_id
       };
+      (request as any).sessionId = tokenData.sessionId;
+      (request as any).deviceId = tokenData.payload?.deviceId;
     } catch (err) {
+      console.error('Authentication error:', err);
       reply.status(401).send({
         error: 'Unauthorized',
         message: 'Authentication failed',
@@ -107,12 +132,32 @@ export const requireAuth = async (request: FastifyRequest, reply: any) => {
     }
 
     const token = authHeader.substring(7);
-    const user = await authService.getUserFromToken(token);
     
-    if (!user) {
+    // Check if token is blacklisted
+    const isBlacklisted = await authService.isTokenBlacklisted(token);
+    if (isBlacklisted) {
+      return reply.status(401).send({
+        error: 'Unauthorized',
+        message: 'Token has been revoked',
+        statusCode: 401,
+      });
+    }
+
+    // Verify token and get user data
+    const tokenData = await authService.verifyAccessToken(token);
+    if (!tokenData) {
       return reply.status(401).send({
         error: 'Unauthorized',
         message: 'Invalid or expired token',
+        statusCode: 401,
+      });
+    }
+
+    const user = await authService.getUserFromToken(token);
+    if (!user) {
+      return reply.status(401).send({
+        error: 'Unauthorized',
+        message: 'User not found',
         statusCode: 401,
       });
     }
@@ -125,7 +170,10 @@ export const requireAuth = async (request: FastifyRequest, reply: any) => {
       role: user.role,
       companyId: user.company_id
     };
+    (request as any).sessionId = tokenData.sessionId;
+    (request as any).deviceId = tokenData.payload?.deviceId;
   } catch (err) {
+    console.error('Authentication error:', err);
     reply.status(401).send({
       error: 'Unauthorized',
       message: 'Authentication failed',

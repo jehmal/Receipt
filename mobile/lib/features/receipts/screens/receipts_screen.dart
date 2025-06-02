@@ -4,6 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/receipts_provider.dart';
 import '../widgets/receipt_card.dart';
 import '../widgets/receipts_filter.dart';
+import '../../../shared/widgets/loading_skeleton.dart';
+import '../../../shared/widgets/error_view.dart';
+import '../../../shared/widgets/empty_state.dart';
+import '../../../core/network/api_exception.dart';
 
 class ReceiptsScreen extends ConsumerStatefulWidget {
   const ReceiptsScreen({super.key});
@@ -66,38 +70,17 @@ class _ReceiptsScreenState extends ConsumerState<ReceiptsScreen> {
             child: receiptsState.when(
               data: (receipts) {
                 if (receipts.isEmpty) {
-                  return const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.receipt_long_outlined,
-                          size: 64,
-                          color: Colors.grey,
-                        ),
-                        SizedBox(height: 16),
-                        Text(
-                          'No receipts yet',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.grey,
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Tap the camera tab to capture your first receipt',
-                          style: TextStyle(color: Colors.grey),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
+                  return NoReceiptsEmptyState(
+                    onAddReceipt: () {
+                      // Navigate to camera tab
+                      DefaultTabController.of(context)?.animateTo(1);
+                    },
                   );
                 }
 
                 return RefreshIndicator(
                   onRefresh: () async {
-                    await ref.read(receiptsProvider.notifier).loadReceipts();
+                    await ref.read(receiptsProvider.notifier).refreshReceipts();
                   },
                   child: ListView.builder(
                     controller: _scrollController,
@@ -108,7 +91,6 @@ class _ReceiptsScreenState extends ConsumerState<ReceiptsScreen> {
                       return ReceiptCard(
                         receipt: receipt,
                         onTap: () {
-                          // Navigate to receipt detail
                           _showReceiptDetail(receipt);
                         },
                         onDelete: () {
@@ -119,39 +101,17 @@ class _ReceiptsScreenState extends ConsumerState<ReceiptsScreen> {
                   ),
                 );
               },
-              loading: () => const Center(
-                child: CircularProgressIndicator(),
-              ),
-              error: (error, stack) => Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      size: 64,
-                      color: Colors.red,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Error loading receipts',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      error.toString(),
-                      style: const TextStyle(color: Colors.grey),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () {
-                        ref.read(receiptsProvider.notifier).loadReceipts();
-                      },
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
-              ),
+              loading: () => const ReceiptListSkeleton(),
+              error: (error, stack) {
+                final apiError = error is ApiException ? error : null;
+                return ErrorView(
+                  error: apiError,
+                  message: apiError?.userFriendlyMessage ?? error.toString(),
+                  onRetry: () {
+                    ref.read(receiptsProvider.notifier).loadReceipts();
+                  },
+                );
+              },
             ),
           ),
         ],
