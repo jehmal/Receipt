@@ -57,7 +57,7 @@ class AuthService {
       
       final response = await _apiClient.post(
         '/auth/register',
-        data: {
+        {
           'email': email,
           'password': password,
           'firstName': firstName,
@@ -105,7 +105,7 @@ class AuthService {
       
       final response = await _apiClient.post(
         '/auth/login',
-        data: {
+        {
           'email': email,
           'password': password,
           'deviceInfo': deviceInfo,
@@ -144,7 +144,7 @@ class AuthService {
     try {
       await _apiClient.post(
         '/auth/logout',
-        data: {'allDevices': allDevices},
+        {'allDevices': allDevices},
       );
     } catch (e) {
       debugPrint('Logout API call failed: $e');
@@ -166,7 +166,7 @@ class AuthService {
       
       final response = await _apiClient.post(
         '/auth/refresh',
-        data: {
+        {
           'refreshToken': refreshToken,
           'deviceInfo': deviceInfo,
         },
@@ -242,7 +242,7 @@ class AuthService {
     try {
       final response = await _apiClient.post(
         '/auth/change-password',
-        data: {
+        {
           'currentPassword': currentPassword,
           'newPassword': newPassword,
         },

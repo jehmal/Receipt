@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
 import '../../../shared/models/receipt.dart';
@@ -75,7 +76,7 @@ class SearchService {
 
       final response = await _apiClient.post(
         '/search/receipts',
-        data: searchData,
+        searchData,
       );
 
       if (response.statusCode == 200) {
@@ -185,7 +186,7 @@ class SearchService {
     try {
       final response = await _apiClient.post(
         '/search/saved',
-        data: {
+        {
           'name': name,
           'filters': filters,
           'options': options ?? {},

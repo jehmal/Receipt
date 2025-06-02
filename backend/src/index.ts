@@ -10,7 +10,7 @@ import path from 'path';
 import config from './config/index';
 import { logger } from './utils/logger';
 import { errorHandler } from './middleware/error-handler';
-import { authPlugin } from './middleware/auth';
+import authPlugin from './middleware/auth';
 
 // Route imports  
 import authRoutes from './routes/auth';

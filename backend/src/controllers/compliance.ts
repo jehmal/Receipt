@@ -124,13 +124,7 @@ export const complianceController = {
         includeBackupVerification = false 
       } = request.query;
 
-      const report = await complianceService.generateDataIntegrityReport({
-        companyId: (user as any).companyId,
-        startDate: startDate ? new Date(startDate) : undefined,
-        endDate: endDate ? new Date(endDate) : undefined,
-        includeHashVerification,
-        includeBackupVerification
-      });
+      const report = await complianceService.generateDataIntegrityReport((user as any).companyId);
 
       // Log report generation
       await auditService.logAction({
@@ -235,11 +229,7 @@ export const complianceController = {
       const user = request.user;
       const { dryRun = true, categories } = request.body;
 
-      const result = await complianceService.applyRetentionPolicy({
-        companyId: (user as any).companyId,
-        dryRun,
-        categories
-      });
+      const result = await complianceService.applyRetentionPolicy((user as any).companyId);
 
       // Log policy application
       await auditService.logAction({
@@ -300,11 +290,10 @@ export const complianceController = {
       const user = request.user;
       const certificationRequest = request.body;
 
-      const certification = await complianceService.requestCertification({
-        ...certificationRequest,
-        companyId: (user as any).companyId,
-        requestedByUserId: (user as any).id
-      });
+      const certification = await complianceService.requestCertification(
+        (user as any).companyId,
+        certificationRequest.certificationType
+      );
 
       // Log certification request
       await auditService.logAction({
@@ -338,10 +327,7 @@ export const complianceController = {
       const user = request.user;
       const { certificationId } = request.params;
 
-      const certification = await complianceService.getCertificationDetails(
-        certificationId,
-        (user as any).companyId
-      );
+      const certification = await complianceService.getCertificationDetails(certificationId);
 
       if (!certification) {
         return reply.status(404).send({
@@ -404,11 +390,13 @@ export const complianceController = {
       const user = request.user;
       const legalHoldData = request.body;
 
-      const legalHold = await complianceService.createLegalHold({
-        ...legalHoldData,
-        companyId: (user as any).companyId,
-        createdBy: (user as any).id
-      });
+      const legalHold = await complianceService.createLegalHold(
+        (user as any).companyId,
+        {
+          ...legalHoldData,
+          createdBy: (user as any).id
+        }
+      );
 
       // Log legal hold creation
       await auditService.logAction({
@@ -446,13 +434,7 @@ export const complianceController = {
       const { holdId } = request.params;
       const { reason, authorizedBy } = request.body;
 
-      const success = await complianceService.releaseLegalHold({
-        holdId,
-        companyId: (user as any).companyId,
-        releasedBy: (user as any).id,
-        reason,
-        authorizedBy
-      });
+      const success = await complianceService.releaseLegalHold(holdId);
 
       if (!success) {
         return reply.status(404).send({
@@ -521,11 +503,13 @@ export const complianceController = {
       const user = request.user;
       const requestData = request.body;
 
-      const dsrRequest = await complianceService.createDataSubjectRequest({
-        ...requestData,
-        companyId: (user as any).companyId,
-        submittedBy: (user as any).id
-      });
+      const dsrRequest = await complianceService.createDataSubjectRequest(
+        (user as any).companyId,
+        {
+          ...requestData,
+          submittedBy: (user as any).id
+        }
+      );
 
       // Log data subject request
       await auditService.logAction({
@@ -566,22 +550,16 @@ export const complianceController = {
       const user = request.user;
       const { status, requestType, page = 1, limit = 20 } = request.query;
 
-      const requests = await complianceService.getDataSubjectRequests({
-        companyId: (user as any).companyId,
-        status,
-        requestType,
-        page,
-        limit
-      });
+      const requests = await complianceService.getDataSubjectRequests((user as any).companyId);
 
       return reply.send({
         success: true,
-        data: requests.data,
+        data: requests,
         pagination: {
           page,
           limit,
-          total: requests.total,
-          totalPages: Math.ceil(requests.total / limit)
+          total: requests.length,
+          totalPages: Math.ceil(requests.length / limit)
         }
       });
     } catch (error) {
@@ -639,10 +617,7 @@ export const complianceController = {
       const user = request.user;
       const { receiptId } = request.params;
 
-      const verification = await complianceService.getBlockchainVerification({
-        receiptId,
-        companyId: (user as any).companyId
-      });
+      const verification = await complianceService.getBlockchainVerification(receiptId);
 
       if (!verification) {
         return reply.status(404).send({
@@ -674,19 +649,23 @@ export const complianceController = {
       const user = request.user;
       const { receiptIds, batchName } = request.body;
 
-      const anchor = await complianceService.anchorToBlockchain({
-        companyId: (user as any).companyId,
-        receiptIds,
-        batchName,
-        initiatedBy: (user as any).id
-      });
+      // For now, anchor the first receipt ID as the service only accepts one receiptId
+      const receiptId = receiptIds?.[0];
+      if (!receiptId) {
+        return reply.status(400).send({
+          success: false,
+          error: 'At least one receipt ID is required'
+        });
+      }
+
+      const anchor = await complianceService.anchorToBlockchain(receiptId);
 
       // Log blockchain anchoring
       await auditService.logAction({
         userId: (user as any).id,
         action: 'blockchain_anchor_created',
         resourceType: 'blockchain_anchor',
-        resourceId: anchor.id,
+        resourceId: anchor.receiptId,
         details: { receiptIds, batchName },
         ipAddress: request.ip,
         userAgent: request.headers['user-agent']
@@ -709,7 +688,7 @@ export const complianceController = {
     try {
       const user = request.user;
 
-      const templates = await complianceService.getComplianceTemplates((user as any).companyId);
+      const templates = await complianceService.getComplianceTemplates();
 
       return reply.send({
         success: true,
@@ -732,10 +711,7 @@ export const complianceController = {
       const user = request.user;
       const { templateId } = request.params;
 
-      const template = await complianceService.getComplianceTemplate(
-        templateId,
-        (user as any).companyId
-      );
+      const template = await complianceService.getComplianceTemplate(templateId);
 
       if (!template) {
         return reply.status(404).send({

@@ -65,8 +65,8 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
   }
 
   @override
-  void didChangeWidget(ErrorBoundary oldWidget) {
-    super.didChangeWidget(oldWidget);
+  void didUpdateWidget(ErrorBoundary oldWidget) {
+    super.didUpdateWidget(oldWidget);
     if (hasError) {
       setState(() {
         hasError = false;

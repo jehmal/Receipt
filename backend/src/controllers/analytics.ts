@@ -8,6 +8,8 @@ interface AnalyticsQuery {
   period?: 'day' | 'week' | 'month';
   category?: string;
   limit?: number;
+  companyId?: string;
+  groupBy?: string;
 }
 
 interface TimeRangeQuery {
@@ -21,7 +23,7 @@ export const analyticsController = {
    */
   async getUserSummary(request: FastifyRequest<{ Querystring: TimeRangeQuery }>, reply: FastifyReply) {
     try {
-      const userId = request.user.id;
+      const userId = (request.user as any).id;
       const { start, end } = request.query;
 
       const timeRange = start && end ? {
@@ -49,7 +51,7 @@ export const analyticsController = {
    */
   async getUserExpensesByCategory(request: FastifyRequest<{ Querystring: TimeRangeQuery }>, reply: FastifyReply) {
     try {
-      const userId = request.user.id;
+      const userId = (request.user as any).id;
       const { start, end } = request.query;
 
       const timeRange = start && end ? {
@@ -79,7 +81,7 @@ export const analyticsController = {
     Querystring: TimeRangeQuery & { period?: 'day' | 'week' | 'month' }
   }>, reply: FastifyReply) {
     try {
-      const userId = request.user.id;
+      const userId = (request.user as any).id;
       const { start, end, period = 'day' } = request.query;
 
       const timeRange = start && end ? {
@@ -107,7 +109,7 @@ export const analyticsController = {
    */
   async getUserBusinessInsights(request: FastifyRequest<{ Querystring: TimeRangeQuery }>, reply: FastifyReply) {
     try {
-      const userId = request.user.id;
+      const userId = (request.user as any).id;
       const { start, end } = request.query;
 
       const timeRange = start && end ? {
@@ -137,7 +139,7 @@ export const analyticsController = {
     Querystring: TimeRangeQuery & { limit?: number }
   }>, reply: FastifyReply) {
     try {
-      const userId = request.user.id;
+      const userId = (request.user as any).id;
       const { start, end, limit = 10 } = request.query;
 
       const timeRange = start && end ? {
@@ -165,7 +167,7 @@ export const analyticsController = {
    */
   async getDashboardData(request: FastifyRequest<{ Querystring: TimeRangeQuery }>, reply: FastifyReply) {
     try {
-      const userId = request.user.id;
+      const userId = (request.user as any).id;
       const { start, end } = request.query;
 
       const timeRange = start && end ? {
@@ -215,7 +217,7 @@ export const analyticsController = {
     Querystring: TimeRangeQuery & { format?: 'csv' | 'json' | 'pdf' }
   }>, reply: FastifyReply) {
     try {
-      const userId = request.user.id;
+      const userId = (request.user as any).id;
       const { start, end, format = 'csv' } = request.query;
 
       const timeRange = start && end ? {

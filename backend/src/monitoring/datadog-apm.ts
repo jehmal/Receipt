@@ -18,7 +18,6 @@ tracer.init({
   service: serviceName,
   version: serviceVersion,
   env: environment,
-  debug: isDevelopment,
   
   // Sampling configuration
   sampleRate: isDevelopment ? 1.0 : 0.1,
@@ -32,48 +31,7 @@ tracer.init({
   },
   
   // Plugin configuration
-  plugins: {
-    // Express.js instrumentation
-    express: {
-      enabled: true,
-      service: `${serviceName}-express`,
-      analyticsEnabled: true,
-      headers: ['user-agent', 'x-request-id', 'x-user-id']
-    },
-    
-    // HTTP client instrumentation
-    http: {
-      enabled: true,
-      service: `${serviceName}-http-client`,
-      splitByDomain: true
-    },
-    
-    // PostgreSQL instrumentation
-    pg: {
-      enabled: true,
-      service: `${serviceName}-postgres`,
-      analyticsEnabled: true
-    },
-    
-    // Redis instrumentation
-    redis: {
-      enabled: true,
-      service: `${serviceName}-redis`,
-      analyticsEnabled: true
-    },
-    
-    // DNS instrumentation
-    dns: {
-      enabled: true,
-      service: `${serviceName}-dns`
-    },
-    
-    // File system instrumentation
-    fs: {
-      enabled: true,
-      service: `${serviceName}-fs`
-    }
-  }
+  plugins: true
 });
 
 // Initialize StatsD client for custom metrics
@@ -110,8 +68,8 @@ export class DatadogAPM {
     operation: string,
     receiptId: string,
     userId: string,
-    companyId?: string,
-    fn: (span: any) => Promise<T>
+    fn: (span: any) => Promise<T>,
+    companyId?: string
   ): Promise<T> {
     return tracer.trace('receipt.processing', {
       resource: operation,
@@ -270,9 +228,9 @@ export class DatadogAPM {
    */
   public traceAuthentication<T>(
     operation: string,
+    fn: (span: any) => Promise<T>,
     userId?: string,
-    provider?: string,
-    fn: (span: any) => Promise<T>
+    provider?: string
   ): Promise<T> {
     return tracer.trace('auth.operation', {
       resource: operation,

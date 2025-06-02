@@ -55,10 +55,10 @@ export const approvalWorkflowController = {
   /**
    * Create a new approval rule
    */
-  async createRule(request: FastifyRequest<{ Body: CreateRuleBody }>, reply: FastifyReply) {
+  async createRule(request: FastifyRequest<{ Body: CreateRuleBody }>, reply: FastifyReply): Promise<void> {
     try {
-      const userId = request.user.id;
-      const companyId = request.user.companyId;
+      const userId = (request.user as any).id;
+      const companyId = (request.user as any).companyId;
 
       if (!companyId) {
         return reply.status(400).send({
@@ -93,9 +93,9 @@ export const approvalWorkflowController = {
   /**
    * Get approval rules for a company
    */
-  async getRules(request: FastifyRequest<{ Querystring: { active?: boolean } }>, reply: FastifyReply) {
+  async getRules(request: FastifyRequest<{ Querystring: { active?: boolean } }>, reply: FastifyReply): Promise<void> {
     try {
-      const companyId = request.user.companyId;
+      const companyId = (request.user as any).companyId;
       const { active } = request.query;
 
       if (!companyId) {
@@ -126,10 +126,10 @@ export const approvalWorkflowController = {
   async checkRequirement(request: FastifyRequest<{ 
     Params: { receiptId: string };
     Querystring: { amount: number; category: string; vendor?: string };
-  }>, reply: FastifyReply) {
+  }>, reply: FastifyReply): Promise<void> {
     try {
-      const userId = request.user.id;
-      const companyId = request.user.companyId;
+      const userId = (request.user as any).id;
+      const companyId = (request.user as any).companyId;
       const { receiptId } = request.params;
       const { amount, category, vendor } = request.query;
 
@@ -165,10 +165,10 @@ export const approvalWorkflowController = {
   /**
    * Create an approval request
    */
-  async createRequest(request: FastifyRequest<{ Body: CreateRequestBody }>, reply: FastifyReply) {
+  async createRequest(request: FastifyRequest<{ Body: CreateRequestBody }>, reply: FastifyReply): Promise<void> {
     try {
-      const userId = request.user.id;
-      const companyId = request.user.companyId;
+      const userId = (request.user as any).id;
+      const companyId = (request.user as any).companyId;
       const { receiptId, amount, category, vendor, reason } = request.body;
 
       if (!companyId) {
@@ -227,7 +227,7 @@ export const approvalWorkflowController = {
     Body: ProcessActionBody;
   }>, reply: FastifyReply) {
     try {
-      const userId = request.user.id;
+      const userId = (request.user as any).id;
       const { requestId } = request.params;
       const { action, comments } = request.body;
 
@@ -254,10 +254,17 @@ export const approvalWorkflowController = {
   /**
    * Get pending approvals for current user
    */
-  async getPendingApprovals(request: FastifyRequest, reply: FastifyReply) {
+  async getPendingApprovals(request: FastifyRequest, reply: FastifyReply): Promise<void> {
     try {
-      const userId = request.user.id;
-      const companyId = request.user.companyId;
+      if (!request.user) {
+        return reply.status(401).send({
+          success: false,
+          error: 'Authentication required'
+        });
+      }
+
+      const userId = (request.user as any).id;
+      const companyId = (request.user as any).companyId;
 
       const pendingApprovals = await approvalWorkflowService.getPendingApprovalsForUser(userId, companyId);
 
@@ -277,9 +284,9 @@ export const approvalWorkflowController = {
   /**
    * Get approval history
    */
-  async getHistory(request: FastifyRequest<{ Querystring: HistoryQuery }>, reply: FastifyReply) {
+  async getHistory(request: FastifyRequest<{ Querystring: HistoryQuery }>, reply: FastifyReply): Promise<void> {
     try {
-      const companyId = request.user.companyId;
+      const companyId = (request.user as any).companyId;
       const { status, startDate, endDate, userId, approverId, page = 1, limit = 50 } = request.query;
 
       if (!companyId) {
@@ -325,10 +332,10 @@ export const approvalWorkflowController = {
   /**
    * Get approval request details
    */
-  async getRequestDetails(request: FastifyRequest<{ Params: { requestId: string } }>, reply: FastifyReply) {
+  async getRequestDetails(request: FastifyRequest<{ Params: { requestId: string } }>, reply: FastifyReply): Promise<void> {
     try {
       const { requestId } = request.params;
-      const companyId = request.user.companyId;
+      const companyId = (request.user as any).companyId;
 
       // Get approval request with receipt details
       const result = await approvalWorkflowService.getApprovalHistory(
@@ -385,9 +392,9 @@ export const approvalWorkflowController = {
   /**
    * Get approval statistics for dashboard
    */
-  async getStatistics(request: FastifyRequest, reply: FastifyReply) {
+  async getStatistics(request: FastifyRequest, reply: FastifyReply): Promise<void> {
     try {
-      const companyId = request.user.companyId;
+      const companyId = (request.user as any).companyId;
 
       if (!companyId) {
         return reply.status(400).send({

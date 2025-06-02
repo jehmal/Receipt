@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:settings_ui/settings_ui.dart';
+import 'package:local_auth/local_auth.dart';
 
 import '../providers/biometric_provider.dart';
 import '../../../core/auth/biometric_service.dart';

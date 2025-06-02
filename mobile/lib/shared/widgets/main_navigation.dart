@@ -12,7 +12,7 @@ class MainNavigation extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
-    final currentLocation = GoRouterState.of(context).location;
+    final currentLocation = GoRouter.of(context).routerDelegate.currentConfiguration.uri.toString();
 
     // Determine which tab is currently active
     int currentIndex = _getCurrentIndex(currentLocation);

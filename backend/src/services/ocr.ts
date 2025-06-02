@@ -300,7 +300,7 @@ class OCRService {
       structuredData.items = this.extractLineItems(lines);
       
       // Determine category and business type
-      structuredData.category = this.categorizeReceipt(structuredData.vendor, cleanText);
+      structuredData.category = await this.categorizeReceipt(structuredData.vendor, cleanText);
       structuredData.businessType = this.determineBusinessType(structuredData.vendor, cleanText);
 
     } catch (error) {

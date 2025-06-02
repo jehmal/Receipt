@@ -320,7 +320,7 @@ export async function gdprRoutes(app: FastifyInstance) {
     } catch (error) {
       logger.error('Failed to download exported data', {
         error: error.message,
-        token: request.params?.token
+        token: (request.params as any)?.token
       });
       
       return reply.status(500).send({

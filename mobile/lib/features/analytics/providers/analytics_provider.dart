@@ -39,22 +39,22 @@ class AnalyticsNotifier extends StateNotifier<AsyncValue<AnalyticsDashboard>> {
         queryParameters: queryParams,
       );
 
-      if (response.success) {
+      if (response.statusCode == 200) {
         final dashboard = AnalyticsDashboard.fromJson(response.data['data']);
         
         // Cache the dashboard data locally
-        await _localStorage.setString(
+        await LocalStorage.setString(
           'analytics_dashboard_cache',
           response.data.toString(),
         );
-        await _localStorage.setString(
+        await LocalStorage.setString(
           'analytics_cache_timestamp',
           DateTime.now().toIso8601String(),
         );
 
         state = AsyncValue.data(dashboard);
       } else {
-        throw Exception(response.error ?? 'Failed to load analytics');
+        throw Exception(response.data['message'] ?? 'Failed to load analytics');
       }
     } catch (e, stack) {
       // Try to load from cache if network fails
@@ -89,7 +89,7 @@ class AnalyticsNotifier extends StateNotifier<AsyncValue<AnalyticsDashboard>> {
         queryParameters: queryParams,
       );
 
-      if (response.success) {
+      if (response.statusCode == 200) {
         return AnalyticsSummary.fromJson(response.data['data']);
       }
       return null;
@@ -117,7 +117,7 @@ class AnalyticsNotifier extends StateNotifier<AsyncValue<AnalyticsDashboard>> {
         queryParameters: queryParams,
       );
 
-      if (response.success) {
+      if (response.statusCode == 200) {
         return (response.data['data'] as List)
             .map((json) => ExpenseCategory.fromJson(json))
             .toList();
@@ -150,7 +150,7 @@ class AnalyticsNotifier extends StateNotifier<AsyncValue<AnalyticsDashboard>> {
         queryParameters: queryParams,
       );
 
-      if (response.success) {
+      if (response.statusCode == 200) {
         return (response.data['data'] as List)
             .map((json) => SpendingTrend.fromJson(json))
             .toList();
@@ -180,7 +180,7 @@ class AnalyticsNotifier extends StateNotifier<AsyncValue<AnalyticsDashboard>> {
         queryParameters: queryParams,
       );
 
-      if (response.success) {
+      if (response.statusCode == 200) {
         return BusinessInsights.fromJson(response.data['data']);
       }
       return null;
@@ -211,7 +211,7 @@ class AnalyticsNotifier extends StateNotifier<AsyncValue<AnalyticsDashboard>> {
         queryParameters: queryParams,
       );
 
-      if (response.success) {
+      if (response.statusCode == 200) {
         return (response.data['data'] as List)
             .map((json) => TopVendor.fromJson(json))
             .toList();
@@ -244,7 +244,7 @@ class AnalyticsNotifier extends StateNotifier<AsyncValue<AnalyticsDashboard>> {
         queryParameters: queryParams,
       );
 
-      if (response.success) {
+      if (response.statusCode == 200) {
         // Return the file content or download URL
         return response.data.toString();
       }
@@ -313,8 +313,8 @@ class AnalyticsNotifier extends StateNotifier<AsyncValue<AnalyticsDashboard>> {
   /// Load from local cache
   Future<AnalyticsDashboard?> _loadFromCache() async {
     try {
-      final cachedData = await _localStorage.getString('analytics_dashboard_cache');
-      final cacheTimestamp = await _localStorage.getString('analytics_cache_timestamp');
+      final cachedData = LocalStorage.getString('analytics_dashboard_cache');
+      final cacheTimestamp = LocalStorage.getString('analytics_cache_timestamp');
       
       if (cachedData != null && cacheTimestamp != null) {
         final timestamp = DateTime.parse(cacheTimestamp);

@@ -249,7 +249,7 @@ const jobsRoutes: FastifyPluginAsync = async (fastify) => {
     async (request: FastifyRequest<RetryReceiptOCRRequest>, reply: FastifyReply) => {
       try {
         const { receiptId } = request.params;
-        const userId = request.user.sub;
+        const userId = (request.user as any).id;
 
         // Verify user owns the receipt
         const receipt = await receiptService.getReceiptById(receiptId, userId);
@@ -304,7 +304,7 @@ const jobsRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       try {
-        const userId = request.user.sub;
+        const userId = (request.user as any).id;
 
         // Get all receipts with status 'uploaded' for this user
         const pendingReceipts = await receiptService.getReceipts(

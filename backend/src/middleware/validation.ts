@@ -52,3 +52,38 @@ export class SchemaRegistry {
     // Implementation
   }
 }
+
+// ValidationMiddleware class for backward compatibility
+export class ValidationMiddleware {
+  static validateBody(schemaName: string) {
+    return validateRequestBody(schemaName);
+  }
+  
+  static validateQuery(schemaName: string) {
+    return validateQueryParams(schemaName);
+  }
+  
+  static validate(schema: any) {
+    return async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+      try {
+        // For Zod schemas, validate the request body
+        if (schema && typeof schema.parse === 'function') {
+          schema.parse(request.body);
+        }
+      } catch (error: any) {
+        return reply.code(400).send({
+          error: 'Validation Error',
+          message: error.message || 'Invalid request data',
+          details: error.errors || []
+        });
+      }
+    };
+  }
+  
+  static addSchema(name: string, schema: any, version?: ApiVersion): void {
+    return SchemaRegistry.addSchema(name, schema, version);
+  }
+}
+
+// Default export
+export default ValidationMiddleware;

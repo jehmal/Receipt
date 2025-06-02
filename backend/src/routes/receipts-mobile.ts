@@ -44,7 +44,7 @@ const mobileReceiptRoutes: FastifyPluginAsync = async (fastify) => {
         description,
         tags,
         jobNumber,
-        context
+        context: context as 'personal' | 'company'
       };
 
       // Upload receipt
@@ -400,11 +400,12 @@ const mobileReceiptRoutes: FastifyPluginAsync = async (fastify) => {
         }
       });
     } catch (error: any) {
+      const { q } = request.query as any;
       // Return fallback suggestions on error
       const fallbackSuggestions = [
         'coffee', 'lunch', 'gas', 'office supplies', 'hotel',
         'restaurant', 'taxi', 'grocery', 'pharmacy', 'parking'
-      ].filter(s => s.toLowerCase().includes(q.toLowerCase()));
+      ].filter(s => s.toLowerCase().includes((q || '').toLowerCase()));
 
       return reply.send({
         success: true,

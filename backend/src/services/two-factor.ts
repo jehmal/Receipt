@@ -387,9 +387,18 @@ class TwoFactorService {
     }
   }
 
-  async setup(userId: string): Promise<any> {
+  async setup(data: { userId: string; email?: string; method?: string; phoneNumber?: string }): Promise<any> {
     try {
-      const secret = await this.generateSecret(userId);
+      // Get user email if not provided
+      let email = data.email;
+      if (!email && data.userId) {
+        const userResult = await db.query('SELECT email FROM users WHERE id = $1', [data.userId]);
+        if (userResult.rows.length > 0) {
+          email = userResult.rows[0].email;
+        }
+      }
+      
+      const secret = await this.generateSecret(data.userId, email || 'user@example.com');
       return secret;
     } catch (error) {
       logger.error('Error setting up 2FA:', error);
@@ -397,16 +406,18 @@ class TwoFactorService {
     }
   }
 
-  async verify(userId: string, token: string): Promise<any> {
+  async verify(data: { userId: string; token: string; method?: string; setupMode?: boolean }): Promise<any> {
     try {
-      const result = await this.verifyToken(userId, token);
+      const result = await this.verifyToken(data.userId, data.token);
       return { 
+        success: result.isValid,
         isValid: result.isValid,
-        message: result.isValid ? 'Token verified' : 'Invalid token'
+        message: result.isValid ? 'Token verified' : 'Invalid token',
+        data: result
       };
     } catch (error) {
       logger.error('Error verifying 2FA token:', error);
-      throw error;
+      throw { success: false, error: error.message };
     }
   }
 

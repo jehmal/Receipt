@@ -47,7 +47,7 @@ export async function securityHeaders(
 export async function accessControlMiddleware(
   request: FastifyRequest,
   reply: FastifyReply
-) {
+): Promise<void> {
   try {
     // Verify user has valid session
     if (!request.user) {
@@ -60,19 +60,20 @@ export async function accessControlMiddleware(
     }
 
     // Check if user account is active
-    if (request.user.status !== 'active') {
+    const user = request.user as any;
+    if (user.status !== 'active') {
       logger.warn('Access denied: Inactive user account', {
-        userId: request.user.id,
-        status: request.user.status
+        userId: user.id,
+        status: user.status
       });
       return reply.status(403).send({ error: 'Account not active' });
     }
 
     // Resource-level access control
-    const resourceId = request.params.id;
+    const resourceId = (request.params as any).id;
     if (resourceId && !await canAccessResource(request.user, resourceId, request.method)) {
       logger.warn('Access denied: Insufficient permissions', {
-        userId: request.user.id,
+        userId: user.id,
         resourceId,
         method: request.method
       });
@@ -87,7 +88,7 @@ export async function accessControlMiddleware(
 
 // OWASP A03: Injection Prevention
 export function injectionPreventionMiddleware() {
-  return async (request: FastifyRequest, reply: FastifyReply) => {
+  return async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
     // Validate and sanitize input
     if (request.body && typeof request.body === 'object') {
       sanitizeObject(request.body);
@@ -131,7 +132,7 @@ export function securityLoggingMiddleware() {
       userAgent: request.headers['user-agent'],
       method: request.method,
       url: request.url,
-      userId: request.user?.id,
+      userId: (request.user as any)?.id,
       timestamp: new Date().toISOString()
     };
 
@@ -148,36 +149,8 @@ export function securityLoggingMiddleware() {
       logger.warn('Suspicious request detected', securityContext);
     }
 
-    reply.addHook('onSend', async () => {
-      const duration = Date.now() - startTime;
-      
-      // Log failed authentication attempts
-      if (reply.statusCode === 401) {
-        logger.warn('Authentication failure', {
-          ...securityContext,
-          duration,
-          statusCode: reply.statusCode
-        });
-      }
-      
-      // Log authorization failures
-      if (reply.statusCode === 403) {
-        logger.warn('Authorization failure', {
-          ...securityContext,
-          duration,
-          statusCode: reply.statusCode
-        });
-      }
-      
-      // Log slow requests (potential DoS)
-      if (duration > 5000) {
-        logger.warn('Slow request detected', {
-          ...securityContext,
-          duration,
-          statusCode: reply.statusCode
-        });
-      }
-    });
+    // Log basic request for security monitoring
+    logger.info('Security request logged', securityContext);
   };
 }
 

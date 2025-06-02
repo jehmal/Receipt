@@ -92,7 +92,12 @@
       "Bash(npm test:*)",
       "Bash(./scripts/setup-test-db.sh:*)",
       "Bash(npm test:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(flutter pub:*)",
+      "Bash(docker build:*)",
+      "Bash(docker:*)",
+      "Bash(\"/mnt/c/Program Files/Docker/Docker/resources/bin/docker\" --version)",
+      "Bash(powershell.exe:*)"
     ],
     "deny": []
   }

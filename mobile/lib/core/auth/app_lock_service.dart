@@ -197,14 +197,16 @@ class AppLockService {
   void _startLockTimer() {
     _cancelLockTimer();
     
-    if (_isLocked || !isAppLockEnabled()) return;
+    isAppLockEnabled().then((isEnabled) {
+      if (_isLocked || !isEnabled) return;
 
-    getAutoLockTimeout().then((timeoutMinutes) {
-      _lockTimer = Timer(Duration(minutes: timeoutMinutes), () {
-        if (!_isLocked) {
-          lockApp();
-          _emitEvent(AppLockEvent.autoLocked());
-        }
+      getAutoLockTimeout().then((timeoutMinutes) {
+        _lockTimer = Timer(Duration(minutes: timeoutMinutes), () {
+          if (!_isLocked) {
+            lockApp();
+            _emitEvent(AppLockEvent.autoLocked());
+          }
+        });
       });
     });
   }

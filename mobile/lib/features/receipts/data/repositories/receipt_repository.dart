@@ -239,12 +239,9 @@ class ReceiptRepositoryImpl implements ReceiptRepository {
 
       final response = await _apiClient.uploadFile(
         '/receipts',
-        file: file,
-        fieldName: 'file',
-        fields: fields,
-        onSendProgress: (sent, total) {
-          // TODO: Update upload progress
-        },
+        file.path,
+        fileKey: 'file',
+        data: fields,
       );
 
       if (response.statusCode == 201) {
@@ -347,7 +344,7 @@ class ReceiptRepositoryImpl implements ReceiptRepository {
 
       final response = await _apiClient.put(
         '/receipts/$id',
-        data: updateData,
+        updateData,
       );
 
       if (response.statusCode == 200) {

@@ -1,7 +1,7 @@
 import { Client as MinioClient } from 'minio';
 import { createHash } from 'crypto';
 import sharp from 'sharp';
-import { fileTypeFromBuffer } from 'file-type';
+import FileType from 'file-type';
 import path from 'path';
 import { randomUUID } from 'crypto';
 import config from '../config/index';
@@ -63,7 +63,7 @@ class StorageService {
       }
 
       // Detect file type from buffer
-      const fileType = await fileTypeFromBuffer(buffer);
+      const fileType = await FileType.fromBuffer(buffer);
       if (!fileType) {
         return {
           isValid: false,

@@ -227,10 +227,11 @@ export class HealthCheckService {
       const basicResponseTime = Date.now() - startTime;
       
       // Check connection pool status
+      const pool = db.getPool();
       const poolStatus = {
-        totalCount: db.totalCount || 0,
-        idleCount: db.idleCount || 0,
-        waitingCount: db.waitingCount || 0
+        totalCount: pool.totalCount || 0,
+        idleCount: pool.idleCount || 0,
+        waitingCount: pool.waitingCount || 0
       };
       
       // Update connection metrics

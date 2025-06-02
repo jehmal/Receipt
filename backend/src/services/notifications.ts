@@ -123,4 +123,26 @@ export const notificationService = {
   }
 };
 
+// Generic notification function for backward compatibility
+export async function sendNotification(type: string, params: any): Promise<void> {
+  logger.info('Sending notification:', { type, params });
+  
+  switch (type) {
+    case 'approvers':
+      return notificationService.notifyApprovers(params);
+    case 'submitter':
+      return notificationService.notifySubmitter(params);
+    case 'bulk_approval':
+      return notificationService.notifyBulkApproval(params);
+    case 'approval_delegation':
+      return notificationService.notifyApprovalDelegation(params);
+    case '2fa_setup':
+      return notificationService.send2FASetupConfirmation(params.userId, params.method);
+    case 'security_alert':
+      return notificationService.sendSecurityAlert(params);
+    default:
+      logger.warn('Unknown notification type:', type);
+  }
+}
+
 export default notificationService;

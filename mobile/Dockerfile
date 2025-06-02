@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y \
     git \
     wget \
     unzip \
+    xz-utils \
     libgconf-2-4 \
     gdb \
     libstdc++6 \
@@ -23,7 +24,9 @@ ENV PATH=$FLUTTER_HOME/bin:$PATH
 
 RUN wget -O flutter.tar.xz https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz \
     && tar -xf flutter.tar.xz -C /opt \
-    && rm flutter.tar.xz
+    && rm flutter.tar.xz \
+    && git config --global --add safe.directory /opt/flutter \
+    && chmod -R a+rX /opt/flutter
 
 # Pre-download Flutter dependencies
 RUN flutter doctor -v

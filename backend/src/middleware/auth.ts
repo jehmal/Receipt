@@ -17,13 +17,7 @@ export interface AuthRequest extends FastifyRequest {
   deviceId?: string;
 }
 
-declare module 'fastify' {
-  interface FastifyInstance {
-    authenticate: (request: FastifyRequest, reply: any) => Promise<void>;
-    adminOnly: (request: FastifyRequest, reply: any) => Promise<void>;
-    companyAdmin: (request: FastifyRequest, reply: any) => Promise<void>;
-  }
-}
+// Module declaration moved to @types/fastify.d.ts to avoid conflicts
 
 const authPlugin: FastifyPluginAsync = async (fastify) => {
   fastify.decorate('authenticate', async (request: FastifyRequest, reply: any) => {
@@ -207,12 +201,16 @@ export const requireCompanyRole = (allowedRoles: string[] = ['company_admin', 's
     if (!authRequest.user || !allowedRoles.includes(authRequest.user.role)) {
       reply.status(403).send({
         error: 'Forbidden',
-        message: 'Insufficient permissions',
+        message: `Access requires one of: ${allowedRoles.join(', ')}`,
         statusCode: 403,
       });
     }
   };
 };
 
-export { authPlugin };
+// Backward compatibility exports
+export const authMiddleware = requireAuth;
+export const authenticate = requireAuth;
+
+// Default export
 export default fp(authPlugin);

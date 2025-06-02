@@ -43,7 +43,7 @@ services:
 
   # Elasticsearch for search
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.8.0
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.0
     container_name: receipt_vault_es
     environment:
       - discovery.type=single-node

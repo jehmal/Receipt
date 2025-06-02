@@ -90,7 +90,7 @@ class ElasticsearchService {
       this.client = new ElasticsearchClient({
         host: config.elasticsearch.url,
         log: 'error',
-        apiVersion: '7.17',
+        apiVersion: '7.x',
         requestTimeout: 30000,
         pingTimeout: 3000,
         sniffOnStart: false,

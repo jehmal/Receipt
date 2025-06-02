@@ -51,13 +51,12 @@ assets/samples/
 .flutter-plugins-dependencies
 .metadata
 
-# Platform-specific directories
+# Platform-specific directories (keep web/ for Flutter web builds)
 ios/
 android/
 macos/
 windows/
 linux/
-web/
 
 # Additional files
 README.md

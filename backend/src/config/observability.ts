@@ -83,7 +83,7 @@ export const initializeOpenTelemetry = () => {
   if (process.env.OTEL_ENABLED === 'true') {
     const sdk = new NodeSDK({
       serviceName: 'receipt-vault-pro',
-      serviceVersion: process.env.APP_VERSION || '1.0.0',
+      // Remove serviceVersion as it's not a valid property
       instrumentations: [
         // Auto-instrumentation will be registered here
       ]
@@ -219,7 +219,7 @@ export const metricsPlugin = async (fastify: FastifyInstance) => {
       reply.type('text/plain; version=0.0.4; charset=utf-8');
       return metrics;
     } catch (error) {
-      reply.code(500).send({ error: 'Failed to collect metrics' });
+      return reply.code(500).send({ error: 'Failed to collect metrics' });
     }
   });
 };

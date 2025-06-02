@@ -25,7 +25,7 @@ export type ApiVersion = typeof SUPPORTED_VERSIONS[number];
 // Extend FastifyRequest to include version
 declare module 'fastify' {
   interface FastifyRequest {
-    apiVersion: ApiVersion;
+    // apiVersion declaration moved to @types/fastify.d.ts to avoid conflicts
   }
 }
 
@@ -184,14 +184,14 @@ export class ApiMigrationHelper {
     version: ApiVersion
   ): T {
     if (version === 'v1') {
-      const migrated = { ...data };
+      const migrated: any = { ...data };
       Object.entries(fieldMappings).forEach(([oldField, newField]) => {
         if (data[newField] !== undefined) {
           migrated[oldField] = data[newField];
           delete migrated[newField];
         }
       });
-      return migrated;
+      return migrated as T;
     }
     return data;
   }

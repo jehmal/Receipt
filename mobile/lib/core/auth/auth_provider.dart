@@ -96,25 +96,24 @@ class AuthService extends StateNotifier<AuthState> {
     
     try {
       final token = await _secureStorage.read(key: 'auth_token');
-      final userJson = await LocalStorage.getString('user_data');
+      final userJson = LocalStorage.getString('user_data');
       
       if (token != null && userJson != null) {
-        final userData = User.fromJson(
-          Map<String, dynamic>.from(
-            LocalStorage.decodeJson(userJson),
-          ),
-        );
-        
-        // Verify token is still valid
-        final isValid = await _verifyToken(token);
-        if (isValid) {
-          state = state.copyWith(
-            isAuthenticated: true,
-            token: token,
-            user: userData,
-            isLoading: false,
-          );
-          return;
+        final decodedData = LocalStorage.decodeJson('user_data');
+        if (decodedData != null) {
+          final userData = User.fromJson(decodedData);
+          
+          // Verify token is still valid
+          final isValid = await _verifyToken(token);
+          if (isValid) {
+            state = state.copyWith(
+              isAuthenticated: true,
+              token: token,
+              user: userData,
+              isLoading: false,
+            );
+            return;
+          }
         }
       }
       
@@ -146,7 +145,7 @@ class AuthService extends StateNotifier<AuthState> {
         
         // Store authentication data
         await _secureStorage.write(key: 'auth_token', value: token);
-        await LocalStorage.setString('user_data', LocalStorage.encodeJson(user.toJson()));
+        await LocalStorage.encodeJson('user_data', user.toJson());
         
         state = state.copyWith(
           isAuthenticated: true,
@@ -190,7 +189,7 @@ class AuthService extends StateNotifier<AuthState> {
         
         // Store authentication data
         await _secureStorage.write(key: 'auth_token', value: token);
-        await LocalStorage.setString('user_data', LocalStorage.encodeJson(user.toJson()));
+        await LocalStorage.encodeJson('user_data', user.toJson());
         
         state = state.copyWith(
           isAuthenticated: true,
@@ -299,7 +298,7 @@ class AuthService extends StateNotifier<AuthState> {
       
       if (response.statusCode == 200) {
         final updatedUser = User.fromJson(response.data['user']);
-        await LocalStorage.setString('user_data', LocalStorage.encodeJson(updatedUser.toJson()));
+        await LocalStorage.encodeJson('user_data', updatedUser.toJson());
         
         state = state.copyWith(
           user: updatedUser,

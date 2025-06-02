@@ -76,15 +76,15 @@ class SearchNotifier extends _$SearchNotifier {
         'from': filters!.dateRange!.start.toIso8601String(),
         'to': filters.dateRange!.end.toIso8601String(),
       },
-      if (filters?.categories.isNotEmpty == true)
+      if (filters?.categories != null && filters!.categories.isNotEmpty)
         'categories': filters.categories.join(','),
-      if (filters?.tags.isNotEmpty == true)
+      if (filters?.tags != null && filters!.tags.isNotEmpty)
         'tags': filters.tags.join(','),
       if (filters?.amountRange != null) ...{
-        'min_amount': filters.amountRange!.start,
+        'min_amount': filters!.amountRange!.start,
         'max_amount': filters.amountRange!.end,
       },
-      if (filters?.vendor?.isNotEmpty == true)
+      if (filters?.vendor != null && filters!.vendor!.isNotEmpty)
         'vendor': filters.vendor,
     };
 

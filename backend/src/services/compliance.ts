@@ -247,7 +247,7 @@ class ComplianceService {
         if (value !== undefined) {
           if (key === 'receiptId') {
             whereConditions.push(`cv.receipt_id = $${paramIndex++}`);
-            values.push(value);
+            values.push(String(value));
           } else if (key === 'ruleId' && typeof value === 'string') {
             whereConditions.push(`cv.rule_id = $${paramIndex++}`);
             values.push(value);
@@ -274,7 +274,7 @@ class ComplianceService {
         LIMIT $${paramIndex++} OFFSET $${paramIndex}
       `;
 
-      values.push(limit, offset);
+      values.push(limit.toString(), offset.toString());
 
       const result = await db.query(query, values);
 

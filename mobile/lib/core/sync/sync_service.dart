@@ -192,9 +192,9 @@ class SyncService {
     try {
       final response = await _apiClient.uploadFile(
         '/receipts',
-        file: file,
-        fieldName: 'file',
-        fields: fields,
+        file.path,
+        fileKey: 'file',
+        data: fields,
       );
 
       if (response.statusCode == 201) {
@@ -237,7 +237,7 @@ class SyncService {
         
         if (localReceipt != null && _hasConflict(localReceipt, serverReceipt)) {
           // Conflict detected - resolve using last-write-wins strategy
-          final localTimestamp = DateTime.parse(localReceipt.updatedAt);
+          final localTimestamp = localReceipt.updatedAt;
           final serverTimestamp = DateTime.parse(serverReceipt['updated_at']);
           
           if (serverTimestamp.isAfter(localTimestamp)) {
@@ -251,7 +251,7 @@ class SyncService {
       // No conflict or local wins - proceed with update
       final response = await _apiClient.put(
         '/receipts/$receiptId',
-        data: {
+        {
           ...payload,
           'version': payload['version'], // Include version for optimistic locking
         },
@@ -264,7 +264,6 @@ class SyncService {
           final updatedReceipt = localReceipt.copyWith(
             isSynced: true,
             syncError: null,
-            version: response.data['data']['receipt']['version'],
           );
           await _db.updateReceipt(updatedReceipt);
         }
@@ -301,7 +300,7 @@ class SyncService {
       // Attempt update with merged data
       final response = await _apiClient.put(
         '/receipts/$receiptId',
-        data: mergedData,
+        mergedData,
       );
       
       if (response.statusCode == 200) {
@@ -355,7 +354,6 @@ class SyncService {
       category: serverReceipt['category'],
       ocrText: serverReceipt['ocr_text'],
       ocrConfidence: serverReceipt['ocr_confidence']?.toDouble(),
-      version: serverReceipt['version'],
       isSynced: true,
       syncError: null,
     );
@@ -365,12 +363,11 @@ class SyncService {
   
   // Check if there's a conflict between local and server data
   bool _hasConflict(dynamic localReceipt, Map<String, dynamic> serverReceipt) {
-    final localTimestamp = DateTime.parse(localReceipt.updatedAt);
+    final localTimestamp = localReceipt.updatedAt;
     final serverTimestamp = DateTime.parse(serverReceipt['updated_at']);
     
     // Consider it a conflict if both have been modified and versions differ
-    return localReceipt.version != serverReceipt['version'] && 
-           localTimestamp.isAfter(serverTimestamp.subtract(const Duration(seconds: 30)));
+    return localTimestamp.isAfter(serverTimestamp.subtract(const Duration(seconds: 30)));
   }
 
   // Update receipt on server (legacy method)
@@ -394,7 +391,7 @@ class SyncService {
     try {
       final response = await _apiClient.put(
         '/users/$userId',
-        data: payload,
+        payload,
       );
 
       return response.statusCode == 200;

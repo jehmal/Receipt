@@ -529,7 +529,7 @@ class EmailProcessorService {
       if (value !== undefined && key !== 'id' && key !== 'userId' && key !== 'companyId' && key !== 'createdAt' && key !== 'updatedAt') {
         const dbField = this.mapFieldToDbColumn(key);
         updateFields.push(`${dbField} = $${paramIndex++}`);
-        params.push(value);
+        params.push(String(value));
       }
     });
 

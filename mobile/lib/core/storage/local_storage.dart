@@ -69,4 +69,31 @@ class LocalStorage {
     await _userBox!.clear();
     await _settingsBox!.clear();
   }
+
+  // String storage methods for compatibility
+  static Future<void> setString(String key, String value) async {
+    await _settingsBox!.put(key, value);
+  }
+
+  static String? getString(String key) {
+    return _settingsBox!.get(key) as String?;
+  }
+
+  // JSON encoding/decoding methods
+  static Future<void> encodeJson(String key, Map<String, dynamic> data) async {
+    await _settingsBox!.put(key, data);
+  }
+
+  static Map<String, dynamic>? decodeJson(String key) {
+    final data = _settingsBox!.get(key);
+    if (data is Map) {
+      return Map<String, dynamic>.from(data);
+    }
+    return null;
+  }
+
+  // Remove method
+  static Future<void> remove(String key) async {
+    await _settingsBox!.delete(key);
+  }
 }

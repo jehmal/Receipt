@@ -359,6 +359,20 @@ class SearchService {
     try {
       if (!this.useElasticsearch) return;
 
+      // Create combined searchable text from all relevant fields
+      const searchableText = [
+        receiptData.vendor_name,
+        receiptData.description,
+        receiptData.notes,
+        receiptData.ocr_text,
+        receiptData.category,
+        receiptData.subcategory,
+        receiptData.tags?.join(' '),
+        receiptData.project_code,
+        receiptData.department,
+        receiptData.cost_center
+      ].filter(Boolean).join(' ');
+
       const esDocument = {
         id: receiptData.id,
         userId: receiptData.user_id,
@@ -386,7 +400,8 @@ class SearchService {
         createdAt: receiptData.created_at,
         updatedAt: receiptData.updated_at,
         businessType: receiptData.structured_data?.businessType,
-        extractedItems: receiptData.structured_data?.items || []
+        extractedItems: receiptData.structured_data?.items || [],
+        searchableText: searchableText
       };
 
       await elasticsearchService.indexReceipt(esDocument);

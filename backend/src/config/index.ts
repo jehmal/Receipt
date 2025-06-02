@@ -163,11 +163,24 @@ export const GOOGLE_CLOUD_CONFIG = {
   speech: {
     projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
     keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS
-  }
+  },
+  apiKey: process.env.GOOGLE_CLOUD_API_KEY,
+  serviceAccountPath: process.env.GOOGLE_APPLICATION_CREDENTIALS
+};
+
+// Elasticsearch configuration
+export const ELASTICSEARCH_CONFIG = {
+  url: process.env.ELASTICSEARCH_URL || 'http://localhost:9200',
+  username: process.env.ELASTICSEARCH_USERNAME,
+  password: process.env.ELASTICSEARCH_PASSWORD,
+  apiKey: process.env.ELASTICSEARCH_API_KEY,
+  ssl: IS_PRODUCTION ? { rejectUnauthorized: false } : false,
+  maxRetries: parseInt(process.env.ELASTICSEARCH_MAX_RETRIES || '3', 10),
+  requestTimeout: parseInt(process.env.ELASTICSEARCH_REQUEST_TIMEOUT || '30000', 10)
 };
 
 // Export all configurations with consistent naming
-export default {
+const config = {
   env: ENV,
   isProduction: IS_PRODUCTION,
   isDevelopment: IS_DEVELOPMENT,
@@ -182,9 +195,14 @@ export default {
   email: EMAIL_CONFIG,
   googleVision: GOOGLE_VISION_CONFIG,
   googleCloud: GOOGLE_CLOUD_CONFIG,
+  elasticsearch: ELASTICSEARCH_CONFIG,
   security: SECURITY_CONFIG,
   logging: LOGGING_CONFIG,
   features: FEATURES,
   upload: UPLOAD_CONFIG
 };
+
+// Export both as default and named export for compatibility
+export { config };
+export default config;
 

@@ -135,7 +135,7 @@ class SIEMIntegrationService {
 
     // Add user context if available
     if (request?.user) {
-      enrichedEvent.userId = request.user.id;
+      enrichedEvent.userId = (request.user as any).id;
       enrichedEvent.sessionId = request.session?.id;
     }
 

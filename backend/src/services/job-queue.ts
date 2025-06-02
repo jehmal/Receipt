@@ -39,9 +39,9 @@ const redisConnection = new Redis({
   port: config.redis.port,
   password: config.redis.password,
   maxRetriesPerRequest: 3,
-  retryDelayOnFailover: 100,
   enableReadyCheck: false,
-  maxLoadingTimeout: 1000,
+  lazyConnect: true,
+  connectTimeout: 60000,
 });
 
 class JobQueueService {

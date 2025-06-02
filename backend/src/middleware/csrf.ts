@@ -68,7 +68,7 @@ export async function csrfProtection(
     return reply.code(403).send({ error: 'Missing session' });
   }
 
-  const csrfToken = request.headers['x-csrf-token'] as string || request.body?.csrfToken;
+  const csrfToken = request.headers['x-csrf-token'] as string || (request.body as any)?.csrfToken;
   if (!csrfToken) {
     return reply.code(403).send({ error: 'Missing CSRF token' });
   }

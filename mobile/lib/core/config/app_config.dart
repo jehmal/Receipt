@@ -2,6 +2,10 @@ import 'dart:io';
 
 class AppConfig {
   // Environment-based configuration with fallbacks
+  static String get apiBaseUrl {
+    return baseUrl;
+  }
+  
   static String get baseUrl {
     // First check for explicitly set environment variable
     final envUrl = const String.fromEnvironment('API_BASE_URL');

@@ -573,7 +573,7 @@ export const analyticsService = {
 
       if (timeRange) {
         whereClause += ' AND receipt_date >= $2 AND receipt_date <= $3';
-        params.push(timeRange.start, timeRange.end);
+        params.push(timeRange.start.toISOString(), timeRange.end.toISOString());
       }
 
       const summaryQuery = `
@@ -634,7 +634,7 @@ export const analyticsService = {
 
       if (timeRange) {
         whereClause += ' AND receipt_date >= $2 AND receipt_date <= $3';
-        params.push(timeRange.start, timeRange.end);
+        params.push(timeRange.start.toISOString(), timeRange.end.toISOString());
       }
 
       const query = `
@@ -694,7 +694,7 @@ export const analyticsService = {
 
       if (timeRange) {
         whereClause += ' AND receipt_date >= $2 AND receipt_date <= $3';
-        params.push(timeRange.start, timeRange.end);
+        params.push(timeRange.start.toISOString(), timeRange.end.toISOString());
       }
 
       const businessQuery = `
@@ -748,7 +748,7 @@ export const analyticsService = {
 
       if (timeRange) {
         whereClause += ' AND receipt_date >= $2 AND receipt_date <= $3';
-        params.push(timeRange.start, timeRange.end);
+        params.push(timeRange.start.toISOString(), timeRange.end.toISOString());
       }
 
       const dateFormat = period === 'month' ? 'YYYY-MM' : 
@@ -790,7 +790,7 @@ export const analyticsService = {
 
       if (timeRange) {
         whereClause += ' AND receipt_date >= $2 AND receipt_date <= $3';
-        params.push(timeRange.start, timeRange.end);
+        params.push(timeRange.start.toISOString(), timeRange.end.toISOString());
       }
 
       const query = `

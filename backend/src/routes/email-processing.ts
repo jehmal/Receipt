@@ -97,12 +97,12 @@ const emailProcessingRoutes: FastifyPluginAsync = async (fastify) => {
         }
       }
     },
-    async (request: FastifyRequest, reply: FastifyReply) => {
-      try {
-        const userId = request.user.sub;
-        const companyId = request.user.company_id;
+          async (request: FastifyRequest, reply: FastifyReply) => {
+        try {
+        const userId = (request.user as any).id;
+        const companyId = (request.user as any).companyId;
 
-        const rules = await emailProcessorService.getProcessingRulesForUser(userId, companyId);
+          const rules = await emailProcessorService.getProcessingRulesForUser(userId, companyId);
 
         return reply.send({ rules });
       } catch (error: any) {
@@ -165,8 +165,8 @@ const emailProcessingRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request: FastifyRequest<CreateRuleRequest>, reply: FastifyReply) => {
       try {
-        const userId = request.user.sub;
-        const companyId = request.user.company_id;
+        const userId = (request.user as any).id;
+        const companyId = (request.user as any).companyId;
         
         const rule = await emailProcessorService.createProcessingRule(
           userId,
@@ -251,7 +251,7 @@ const emailProcessingRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request: FastifyRequest<UpdateRuleRequest>, reply: FastifyReply) => {
       try {
-        const userId = request.user.sub;
+        const userId = (request.user as any).id;
         const { ruleId } = request.params;
 
         const rule = await emailProcessorService.updateProcessingRule(
@@ -304,7 +304,7 @@ const emailProcessingRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request: FastifyRequest<DeleteRuleRequest>, reply: FastifyReply) => {
       try {
-        const userId = request.user.sub;
+        const userId = (request.user as any).id;
         const { ruleId } = request.params;
 
         const deleted = await emailProcessorService.deleteProcessingRule(ruleId, userId);
@@ -395,8 +395,8 @@ const emailProcessingRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request: FastifyRequest<ProcessEmailRequest>, reply: FastifyReply) => {
       try {
-        const userId = request.user.sub;
-        const companyId = request.user.company_id;
+        const userId = (request.user as any).id;
+        const companyId = (request.user as any).companyId;
 
         // Convert request data to ProcessedEmail format
         const email = {
@@ -481,7 +481,7 @@ const emailProcessingRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request: FastifyRequest<ProcessEmailRequest>, reply: FastifyReply) => {
       try {
-        const userId = request.user.sub;
+        const userId = (request.user as any).id;
 
         // Convert attachments from base64 to Buffer
         const attachments = request.body.attachments.map(att => ({
@@ -537,8 +537,8 @@ const emailProcessingRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       try {
-        const userId = request.user.sub;
-        const companyId = request.user.company_id;
+        const userId = (request.user as any).id;
+        const companyId = (request.user as any).companyId;
 
         const stats = await emailProcessorService.getProcessingStats(userId, companyId);
 

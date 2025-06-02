@@ -28,7 +28,7 @@ class _CompanyDashboardScreenState extends ConsumerState<CompanyDashboardScreen>
     
     // Load initial data
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(companyAnalyticsProvider.notifier).loadAnalytics(_selectedPeriod);
+      ref.read(companyAnalyticsNotifierProvider.notifier).loadAnalytics(_selectedPeriod);
     });
   }
 
@@ -40,7 +40,7 @@ class _CompanyDashboardScreenState extends ConsumerState<CompanyDashboardScreen>
 
   @override
   Widget build(BuildContext context) {
-    final analyticsState = ref.watch(companyAnalyticsProvider);
+    final analyticsState = ref.watch(companyAnalyticsNotifierProvider);
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -58,7 +58,7 @@ class _CompanyDashboardScreenState extends ConsumerState<CompanyDashboardScreen>
                   setState(() {
                     _selectedPeriod = period;
                   });
-                  ref.read(companyAnalyticsProvider.notifier).loadAnalytics(period);
+                  ref.read(companyAnalyticsNotifierProvider.notifier).loadAnalytics(period);
                 },
                 itemBuilder: (context) => [
                   const PopupMenuItem(
@@ -148,7 +148,7 @@ class _CompanyDashboardScreenState extends ConsumerState<CompanyDashboardScreen>
               const SizedBox(height: 16),
               FilledButton(
                 onPressed: () {
-                  ref.read(companyAnalyticsProvider.notifier).loadAnalytics(_selectedPeriod);
+                  ref.read(companyAnalyticsNotifierProvider.notifier).loadAnalytics(_selectedPeriod);
                 },
                 child: const Text('Retry'),
               ),
@@ -157,7 +157,7 @@ class _CompanyDashboardScreenState extends ConsumerState<CompanyDashboardScreen>
         ),
       CompanyAnalyticsLoaded(analytics: final analytics) => RefreshIndicator(
           onRefresh: () async {
-            await ref.read(companyAnalyticsProvider.notifier).loadAnalytics(_selectedPeriod);
+            await ref.read(companyAnalyticsNotifierProvider.notifier).loadAnalytics(_selectedPeriod);
           },
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
@@ -226,8 +226,7 @@ class _CompanyDashboardScreenState extends ConsumerState<CompanyDashboardScreen>
                 ),
                 const SizedBox(height: 16),
                 CategoryBreakdownChart(
-                  data: analytics.categoryBreakdown,
-                  totalAmount: analytics.totalExpenses,
+                  data: analytics.categoryBreakdown ?? {},
                 ),
 
                 const SizedBox(height: 24),
@@ -241,10 +240,7 @@ class _CompanyDashboardScreenState extends ConsumerState<CompanyDashboardScreen>
                 ),
                 const SizedBox(height: 16),
                 RecentReceiptsList(
-                  receipts: analytics.recentReceipts,
-                  onReceiptTap: (receipt) {
-                    // Navigate to receipt detail
-                  },
+                  receipts: (analytics.recentReceipts as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [],
                 ),
               ],
             ),
@@ -348,7 +344,7 @@ class _CompanyDashboardScreenState extends ConsumerState<CompanyDashboardScreen>
               ),
               const SizedBox(height: 16),
               TeamActivityWidget(
-                activities: analytics.teamActivity,
+                activities: (analytics.teamActivity as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [],
               ),
 
               const SizedBox(height: 24),
@@ -515,13 +511,7 @@ class _CompanyDashboardScreenState extends ConsumerState<CompanyDashboardScreen>
   void _showExportOptions(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      builder: (context) => ExportOptionsSheet(
-        onExport: (format, period) {
-          // Handle export
-          Navigator.pop(context);
-          _exportData(format, period);
-        },
-      ),
+      builder: (context) => const ExportOptionsSheet(),
     );
   }
 

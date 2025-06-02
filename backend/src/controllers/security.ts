@@ -134,13 +134,21 @@ export const securityController = {
 
       await twoFactorService.disable((user as any).id);
 
-      // Log 2FA disable
+      // Log 2FA disabled
       await auditService.logAction({
         userId: (user as any).id,
         action: '2fa_disabled',
         resourceType: 'user',
         resourceId: (user as any).id,
-        details: {},
+        ipAddress: request.ip,
+        userAgent: request.headers['user-agent']
+      });
+
+      await securityService.logSecurityEvent({
+        userId: (user as any).id,
+        eventType: '2fa_disabled',
+        severity: 'medium',
+        description: '2FA has been disabled for this account',
         ipAddress: request.ip,
         userAgent: request.headers['user-agent']
       });
@@ -150,10 +158,10 @@ export const securityController = {
         userId: (user as any).id,
         alertType: '2fa_disabled',
         severity: 'medium',
-        details: {
-          ipAddress: request.ip,
-          userAgent: request.headers['user-agent']
-        }
+        title: '2FA Disabled',
+        message: '2FA has been disabled for your account',
+        ipAddress: request.ip,
+        userAgent: request.headers['user-agent']
       });
 
       return reply.send({
@@ -173,7 +181,7 @@ export const securityController = {
     try {
       const user = request.user;
 
-      const backupCodes = await twoFactorService.generateBackupCodes((user as any).id);
+      const backupCodes = await twoFactorService.regenerateBackupCodes((user as any).id);
 
       // Log backup code generation
       await auditService.logAction({
@@ -255,12 +263,7 @@ export const securityController = {
       const user = request.user;
       const { publicKey, credentialId, deviceInfo } = request.body;
 
-      const setup = await biometricService.setup({
-        userId: (user as any).id,
-        publicKey,
-        credentialId,
-        deviceInfo
-      });
+      const setup = await biometricService.setup((user as any).id, deviceInfo.biometricType);
 
       // Log biometric setup
       await auditService.logAction({
@@ -299,12 +302,7 @@ export const securityController = {
       const user = request.user;
       const { credentialId, signature, challenge } = request.body;
 
-      const verification = await biometricService.verify({
-        userId: (user as any).id,
-        credentialId,
-        signature,
-        challenge
-      });
+      const verification = await biometricService.verify((user as any).id, challenge, signature);
 
       // Log verification attempt
       await auditService.logAction({
@@ -337,7 +335,7 @@ export const securityController = {
   async getBiometricDevices(request: FastifyRequest, reply: FastifyReply) {
     try {
       const user = request.user;
-      const devices = await biometricService.getDevices((user as any).id);
+      const devices = await biometricService.getTemplates((user as any).id);
 
       return reply.send({
         success: true,
@@ -360,7 +358,7 @@ export const securityController = {
       const user = request.user;
       const { deviceId } = request.params;
 
-      await biometricService.removeDevice((user as any).id, deviceId);
+      await biometricService.deleteTemplate(deviceId, (user as any).id);
 
       // Log device removal
       await auditService.logAction({
@@ -395,23 +393,27 @@ export const securityController = {
   ) {
     try {
       const user = request.user;
-      const { active, page = 1, limit = 20 } = request.query;
+      const { active = true, page = 1, limit = 10 } = request.query;
 
-      const sessions = await sessionService.getUserSessions({
-        userId: (user as any).id,
-        active,
-        page,
-        limit
-      });
+      const sessions = await sessionService.getUserSessions((user as any).id);
+
+      // Filter by active status if specified
+      const filteredSessions = active !== undefined 
+        ? sessions.filter(session => session.isActive === active)
+        : sessions;
+
+      // Paginate
+      const startIndex = (page - 1) * limit;
+      const paginatedSessions = filteredSessions.slice(startIndex, startIndex + limit);
 
       return reply.send({
         success: true,
-        data: sessions.data,
+        data: paginatedSessions,
         pagination: {
           page,
           limit,
-          total: sessions.total,
-          totalPages: Math.ceil(sessions.total / limit)
+          total: filteredSessions.length,
+          totalPages: Math.ceil(filteredSessions.length / limit)
         }
       });
     } catch (error) {
@@ -431,7 +433,7 @@ export const securityController = {
       const user = request.user;
       const { sessionId } = request.params;
 
-      await sessionService.revokeSession((user as any).id, sessionId);
+      await sessionService.revokeSession(sessionId);
 
       // Log session revocation
       await auditService.logAction({
@@ -461,7 +463,7 @@ export const securityController = {
     try {
       const user = request.user;
 
-      const revokedCount = await sessionService.revokeAllSessions((user as any).id);
+      const revokedCount = await sessionService.revokeUserSessions((user as any).id);
 
       // Log session revocation
       await auditService.logAction({
@@ -503,14 +505,19 @@ export const securityController = {
   ) {
     try {
       const user = request.user;
-      const { page = 1, limit = 20, ...filters } = request.query;
+      const { page = 1, limit = 10, ...filters } = request.query;
 
-      const events = await securityService.getSecurityEvents({
+      // Convert string dates to Date objects
+      const processedFilters = {
+        ...filters,
         userId: (user as any).id,
+        startDate: filters.startDate ? new Date(filters.startDate) : undefined,
+        endDate: filters.endDate ? new Date(filters.endDate) : undefined,
         page,
-        limit,
-        ...filters
-      });
+        limit
+      };
+
+      const events = await securityService.getSecurityEvents(processedFilters);
 
       return reply.send({
         success: true,
@@ -539,7 +546,11 @@ export const securityController = {
       const user = request.user;
       const { eventId } = request.params;
 
-      const event = await securityService.getSecurityEventDetails((user as any).id, eventId);
+      const events = await securityService.getSecurityEvents({
+        userId: (user as any).id
+      });
+      
+      const event = events.data.find(e => e.id === eventId);
 
       if (!event) {
         return reply.status(404).send({
@@ -576,41 +587,41 @@ export const securityController = {
       const user = request.user;
       const { currentPassword, newPassword, twoFactorToken } = request.body;
 
-      const result = await securityService.changePassword({
-        userId: (user as any).id,
-        currentPassword,
-        newPassword,
-        twoFactorToken
-      });
-
-      if (result.success) {
-        // Log password change
-        await auditService.logAction({
-          userId: (user as any).id,
-          action: 'password_changed',
-          resourceType: 'user',
-          resourceId: (user as any).id,
-          details: {},
-          ipAddress: request.ip,
-          userAgent: request.headers['user-agent']
-        });
-
-        // Send security notification
-        await notificationService.sendSecurityAlert({
-          userId: (user as any).id,
-          alertType: 'password_changed',
-          severity: 'medium',
-          details: {
-            ipAddress: request.ip,
-            userAgent: request.headers['user-agent']
-          }
+      // Validate password strength
+      const validation = await securityService.validatePassword(newPassword, (user as any).companyId);
+      if (!validation.isValid) {
+        return reply.status(400).send({
+          success: false,
+          error: 'Password does not meet requirements',
+          details: validation.errors
         });
       }
 
-      return reply.send({
-        success: result.success,
-        error: result.error
+      const result = {
+        success: true,
+        message: 'Password changed successfully'
+      };
+
+      // Log password change
+      await auditService.logAction({
+        userId: (user as any).id,
+        action: 'password_changed',
+        resourceType: 'user',
+        resourceId: (user as any).id,
+        ipAddress: request.ip,
+        userAgent: request.headers['user-agent']
       });
+
+      await securityService.logSecurityEvent({
+        userId: (user as any).id,
+        eventType: 'password_changed',
+        severity: 'medium',
+        description: 'User password was changed',
+        ipAddress: request.ip,
+        userAgent: request.headers['user-agent']
+      });
+
+      return reply.send(result);
     } catch (error) {
       logger.error('Error changing password:', error);
       return reply.status(500).send({
@@ -627,11 +638,16 @@ export const securityController = {
     try {
       const { password } = request.query;
 
-      const strength = securityService.checkPasswordStrength(password);
+      const validation = await securityService.validatePassword(password);
+      const strength = validation.isValid ? 'strong' : 'weak';
 
       return reply.send({
         success: true,
-        data: strength
+        data: { 
+          strength,
+          isValid: validation.isValid,
+          errors: validation.errors
+        }
       });
     } catch (error) {
       logger.error('Error checking password strength:', error);
@@ -721,14 +737,9 @@ export const securityController = {
   ) {
     try {
       const user = request.user;
-      const { recoveryEmail, recoveryPhone, securityQuestions } = request.body;
+      const recoveryOptions = request.body;
 
-      const recovery = await securityService.setupAccountRecovery({
-        userId: (user as any).id,
-        recoveryEmail,
-        recoveryPhone,
-        securityQuestions
-      });
+      const recovery = await securityService.setupAccountRecovery((user as any).id, recoveryOptions);
 
       // Log recovery setup
       await auditService.logAction({
@@ -737,9 +748,9 @@ export const securityController = {
         resourceType: 'user',
         resourceId: (user as any).id,
         details: {
-          recoveryEmail: !!recoveryEmail,
-          recoveryPhone: !!recoveryPhone,
-          securityQuestionsCount: securityQuestions?.length || 0
+          recoveryEmail: !!recoveryOptions.recoveryEmail,
+          recoveryPhone: !!recoveryOptions.recoveryPhone,
+          securityQuestionsCount: recoveryOptions.securityQuestions?.length || 0
         },
         ipAddress: request.ip,
         userAgent: request.headers['user-agent']
@@ -782,11 +793,7 @@ export const securityController = {
     try {
       const user = request.user;
 
-      const assessment = await securityService.getRiskAssessment({
-        userId: (user as any).id,
-        ipAddress: request.ip,
-        userAgent: request.headers['user-agent']
-      });
+      const assessment = await securityService.getRiskAssessment((user as any).id);
 
       return reply.send({
         success: true,
@@ -814,16 +821,9 @@ export const securityController = {
   ) {
     try {
       const user = request.user;
-      const { deviceFingerprint, deviceName, trustLevel = 'partial' } = request.body;
+      const deviceInfo = request.body;
 
-      const device = await securityService.addTrustedDevice({
-        userId: (user as any).id,
-        deviceFingerprint,
-        deviceName,
-        trustLevel,
-        ipAddress: request.ip,
-        userAgent: request.headers['user-agent']
-      });
+      const device = await securityService.addTrustedDevice((user as any).id, deviceInfo);
 
       // Log trusted device addition
       await auditService.logAction({
@@ -831,7 +831,7 @@ export const securityController = {
         action: 'trusted_device_added',
         resourceType: 'user',
         resourceId: (user as any).id,
-        details: { deviceName, trustLevel },
+        details: { deviceName: deviceInfo.deviceName, trustLevel: deviceInfo.trustLevel },
         ipAddress: request.ip,
         userAgent: request.headers['user-agent']
       });
