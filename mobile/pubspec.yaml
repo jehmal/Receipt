@@ -21,7 +21,7 @@ dependencies:
   settings_ui: ^2.0.2
   
   # Camera & Image Processing
-  camera: ^0.10.5+2
+  camera: ">=0.10.5+2 <0.12.0"
   image_picker: ^1.0.1
   image_cropper: ^5.0.1
   image: ^4.0.17
