@@ -83,7 +83,8 @@
       "Bash(flutter pub:*)",
       "Bash(/home/jehma/.npm-global/lib/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/x64-linux/rg \"TODO|FIXME|BUG|HACK|XXX|DEPRECATED\" --type dart)",
       "Bash(git reset:*)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "Bash(git rm:*)"
     ],
     "deny": []
   }
