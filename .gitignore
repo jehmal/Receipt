@@ -1,0 +1,59 @@
+# Environment variables
+# .env
+# .env.local
+# .env.production
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Flutter
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/.dart_tool/
+mobile/.packages
+mobile/build/
+mobile/ios/Pods/
+mobile/ios/.symlinks/
+mobile/android/.gradle/
+mobile/android/app/build/
+
+# Database
+*.db
+*.sqlite
+database/data/
+
+# Logs
+logs/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist/
+build/
+coverage/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# SSL certificates
+*.pem
+*.key
+*.crt
+
+# Backup files
+*.backup
+*.bak

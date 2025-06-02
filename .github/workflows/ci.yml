@@ -1,0 +1,56 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  backend-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: backend/package-lock.json
+    
+    - name: Install backend dependencies
+      run: npm ci
+      working-directory: ./backend
+    
+    - name: Run backend tests
+      run: npm test
+      working-directory: ./backend
+    
+    - name: Run backend linting
+      run: npm run lint
+      working-directory: ./backend
+
+  mobile-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.16.0'
+    
+    - name: Install mobile dependencies
+      run: flutter pub get
+      working-directory: ./mobile
+    
+    - name: Run mobile tests
+      run: flutter test
+      working-directory: ./mobile
+    
+    - name: Run mobile analysis
+      run: flutter analyze
+      working-directory: ./mobile
