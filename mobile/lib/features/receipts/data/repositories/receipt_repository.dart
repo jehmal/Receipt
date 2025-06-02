@@ -522,7 +522,7 @@ class ReceiptRepositoryImpl implements ReceiptRepository {
     final now = DateTime.now();
     final receipt = Receipt(
       id: 'local_${now.millisecondsSinceEpoch}',
-      userId: 'current_user', // TODO: Get from auth service
+      userId: await _getCurrentUserId(),
       status: 'uploaded',
       createdAt: now,
       updatedAt: now,
@@ -555,4 +555,13 @@ class Result<T> {
   factory Result.failure(ApiException error) => Result._(error: error, isSuccess: false);
 
   bool get isFailure => !isSuccess;
+}
+
+// Helper method to get current user ID
+Future<String> _getCurrentUserId() async {
+  final userId = LocalStorage.getSetting<String>('user_id');
+  if (userId == null || userId.isEmpty) {
+    throw Exception('No user ID available');
+  }
+  return userId;
 }

@@ -6,6 +6,7 @@ import 'package:crypto/crypto.dart';
 import 'dart:convert';
 
 import '../../../core/config/app_config.dart';
+import '../../../core/storage/local_storage.dart';
 import '../../../shared/models/receipt.dart';
 
 part 'upload_provider.g.dart';
@@ -99,7 +100,11 @@ class UploadNotifier extends _$UploadNotifier {
 
   Future<String> _getAuthToken() async {
     // Get auth token from secure storage
-    return 'mock_token'; // Replace with actual implementation
+    final token = LocalStorage.getSetting<String>('access_token');
+    if (token == null || token.isEmpty) {
+      throw Exception('No authentication token available');
+    }
+    return token;
   }
 
   Future<void> _saveReceiptLocally(Receipt receipt) async {

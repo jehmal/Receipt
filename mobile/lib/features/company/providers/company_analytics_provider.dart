@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:dio/dio.dart';
 
 import '../../../core/config/app_config.dart';
+import '../../../core/storage/local_storage.dart';
 import '../../../shared/models/receipt.dart';
 
 part 'company_analytics_provider.g.dart';
@@ -72,7 +73,11 @@ class CompanyAnalyticsNotifier extends _$CompanyAnalyticsNotifier {
   }
 
   Future<String> _getAuthToken() async {
-    return 'mock_token'; // Replace with actual implementation
+    final token = LocalStorage.getSetting<String>('access_token');
+    if (token == null || token.isEmpty) {
+      throw Exception('No authentication token available');
+    }
+    return token;
   }
 
   Future<void> refreshAnalytics() async {

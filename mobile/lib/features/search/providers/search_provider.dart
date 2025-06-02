@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:dio/dio.dart';
 
 import '../../../core/config/app_config.dart';
+import '../../../core/storage/local_storage.dart';
 import '../../../shared/models/receipt.dart';
 
 part 'search_provider.g.dart';
@@ -165,7 +166,11 @@ class SearchNotifier extends _$SearchNotifier {
   }
 
   Future<String> _getAuthToken() async {
-    return 'mock_token'; // Replace with actual implementation
+    final token = LocalStorage.getSetting<String>('access_token');
+    if (token == null || token.isEmpty) {
+      throw Exception('No authentication token available');
+    }
+    return token;
   }
 
   void clearSearch() {
@@ -216,7 +221,11 @@ class SearchSuggestionsNotifier extends _$SearchSuggestionsNotifier {
   }
 
   Future<String> _getAuthToken() async {
-    return 'mock_token'; // Replace with actual implementation
+    final token = LocalStorage.getSetting<String>('access_token');
+    if (token == null || token.isEmpty) {
+      throw Exception('No authentication token available');
+    }
+    return token;
   }
 }
 
@@ -245,7 +254,11 @@ class FilterOptionsNotifier extends _$FilterOptionsNotifier {
   }
 
   Future<String> _getAuthToken() async {
-    return 'mock_token'; // Replace with actual implementation
+    final token = LocalStorage.getSetting<String>('access_token');
+    if (token == null || token.isEmpty) {
+      throw Exception('No authentication token available');
+    }
+    return token;
   }
 }
 

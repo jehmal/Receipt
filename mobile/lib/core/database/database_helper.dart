@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
@@ -323,7 +324,7 @@ class DatabaseHelper {
       'action': action,
       'entity_type': entityType,
       'entity_id': entityId,
-      'payload': payload.toString(),
+      'payload': jsonEncode(payload),
       'created_at': now,
       'retry_count': 0,
     });

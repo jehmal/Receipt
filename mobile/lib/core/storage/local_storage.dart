@@ -58,6 +58,11 @@ class LocalStorage {
     return _settingsBox!.get(key);
   }
 
+  // Delete a specific setting
+  static Future<void> deleteSetting(String key) async {
+    await _settingsBox!.delete(key);
+  }
+
   // Clear all data
   static Future<void> clearAll() async {
     await _receiptBox!.clear();

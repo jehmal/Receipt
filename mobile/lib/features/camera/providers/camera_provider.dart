@@ -41,9 +41,8 @@ class CameraNotifier extends StateNotifier<CameraState> {
       // Create receipt object
       final receipt = Receipt(
         id: const Uuid().v4(),
-        userId: 'current_user', // TODO: Get from auth provider
-        imagePath: imagePath,
-        date: DateTime.now(),
+        userId: await _getCurrentUserId(),
+        localImagePath: imagePath,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
         fileHash: hash,
@@ -60,6 +59,14 @@ class CameraNotifier extends StateNotifier<CameraState> {
     } catch (e) {
       state = state.copyWith(isProcessing: false, error: e.toString());
     }
+  }
+
+  Future<String> _getCurrentUserId() async {
+    final userId = LocalStorage.getSetting<String>('user_id');
+    if (userId == null || userId.isEmpty) {
+      throw Exception('No user ID available');
+    }
+    return userId;
   }
 }
 
