@@ -20,6 +20,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
   bool _showFilters = false;
+  bool _isSearching = false;
 
   @override
   void initState() {

@@ -1,6 +1,6 @@
-import { db } from '@/database/connection';
-import { logger } from '@/utils/logger';
-import { redis } from '@/config/redis';
+import { db } from '../database/connection';
+import { logger } from '../utils/logger';
+import { redis } from '../config/redis';
 import { v4 as uuidv4 } from 'uuid';
 
 interface ApprovalFilter {

@@ -4,8 +4,8 @@ import { FastifyInstance } from 'fastify';
 import { Pool } from 'pg';
 import { TestDataFactory, TestDatabaseHelpers, HTTPTestHelpers } from '../fixtures/test-data';
 
-// Import the Fastify app
-import { buildApp } from '../../index';
+// Import the test Fastify app
+import { buildApp } from '../helpers/test-server';
 
 describe('API Integration Tests', () => {
   let app: FastifyInstance;

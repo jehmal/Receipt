@@ -1,0 +1,299 @@
+# Critical Production Alerts for Receipt Vault Pro
+# These alerts indicate service disruption and require immediate attention
+
+groups:
+  - name: critical.service_disruption
+    interval: 15s
+    rules:
+      - alert: ServiceDown
+        expr: up{job="receipt-vault-backend"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          team: platform
+          service: receipt-vault
+          escalation: pagerduty
+        annotations:
+          summary: "Receipt Vault backend service is down"
+          description: "The Receipt Vault backend service has been down for more than 30 seconds. This affects all user operations."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/service-down"
+          dashboard_url: "https://grafana.receiptvault.com/d/api-performance"
+
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{job="receipt-vault-backend",status_code=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total{job="receipt-vault-backend"}[5m]))
+          ) * 100 > 1
+        for: 2m
+        labels:
+          severity: critical
+          team: backend
+          service: receipt-vault
+          escalation: pagerduty
+        annotations:
+          summary: "High error rate detected: {{ $value }}%"
+          description: "Error rate is {{ $value }}% for the last 5 minutes, which exceeds our 1% SLO threshold."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/high-error-rate"
+          dashboard_url: "https://grafana.receiptvault.com/d/api-performance"
+
+      - alert: DatabaseDown
+        expr: up{job="postgres-exporter"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          team: database
+          service: postgresql
+          escalation: pagerduty
+        annotations:
+          summary: "PostgreSQL database is down"
+          description: "The main PostgreSQL database is unreachable. All data operations are affected."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/database-down"
+
+      - alert: RedisDown
+        expr: up{job="redis-exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: cache
+          service: redis
+          escalation: pagerduty
+        annotations:
+          summary: "Redis cache is down"
+          description: "Redis cache is unavailable. Session management and job queues are affected."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/redis-down"
+
+      - alert: CriticalMemoryUsage
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 95
+        for: 2m
+        labels:
+          severity: critical
+          team: infrastructure
+          escalation: pagerduty
+        annotations:
+          summary: "Critical memory usage on {{ $labels.instance }}"
+          description: "Memory usage is {{ $value }}% on {{ $labels.instance }}. System is at risk of OOM."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/memory-critical"
+
+      - alert: DiskSpaceCritical
+        expr: |
+          (1 - (node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes{fstype!="tmpfs"})) * 100 > 95
+        for: 1m
+        labels:
+          severity: critical
+          team: infrastructure
+          escalation: pagerduty
+        annotations:
+          summary: "Critical disk space on {{ $labels.instance }}"
+          description: "Disk usage is {{ $value }}% on {{ $labels.instance }} mount {{ $labels.mountpoint }}. System will fail soon."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/disk-critical"
+
+  - name: critical.security_incidents
+    interval: 30s
+    rules:
+      - alert: SecurityBreach
+        expr: |
+          sum(rate(security_alerts_total{severity="critical"}[5m])) > 0.1
+        for: 1m
+        labels:
+          severity: critical
+          team: security
+          service: security
+          escalation: security_team
+        annotations:
+          summary: "Critical security incident detected"
+          description: "Critical security alerts are being triggered at a rate of {{ $value }}/second."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/security-breach"
+
+      - alert: BruteForceAttack
+        expr: |
+          sum(rate(auth_failures_total[5m])) > 10
+        for: 2m
+        labels:
+          severity: critical
+          team: security
+          service: authentication
+          escalation: security_team
+        annotations:
+          summary: "Potential brute force attack detected"
+          description: "Authentication failures rate is {{ $value }}/second, indicating possible brute force attack."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/brute-force"
+
+      - alert: DDoSAttack
+        expr: |
+          sum(rate(http_requests_total[1m])) > 1000
+        for: 1m
+        labels:
+          severity: critical
+          team: security
+          service: loadbalancer
+          escalation: security_team
+        annotations:
+          summary: "Possible DDoS attack detected"
+          description: "Request rate is {{ $value }}/second, significantly above normal levels."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/ddos-attack"
+
+  - name: critical.business_operations
+    interval: 60s
+    rules:
+      - alert: ReceiptProcessingHalted
+        expr: |
+          sum(rate(receipts_processed_total{status="success"}[10m])) == 0
+        for: 10m
+        labels:
+          severity: critical
+          team: backend
+          service: receipt-processing
+          escalation: business_critical
+        annotations:
+          summary: "Receipt processing has completely stopped"
+          description: "No successful receipt processing in the last 10 minutes. Core business function is down."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/processing-halted"
+
+      - alert: OCRServiceFailure
+        expr: |
+          (
+            sum(rate(receipts_processed_total{status="failed"}[5m]))
+            /
+            sum(rate(receipts_processed_total[5m]))
+          ) * 100 > 50
+        for: 5m
+        labels:
+          severity: critical
+          team: backend
+          service: ocr
+          escalation: business_critical
+        annotations:
+          summary: "OCR service failure rate: {{ $value }}%"
+          description: "OCR processing failure rate is {{ $value }}%, indicating service degradation."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/ocr-failure"
+
+      - alert: PaymentSystemDown
+        expr: up{job="payment-processor"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          team: payments
+          service: payment-processor
+          escalation: business_critical
+        annotations:
+          summary: "Payment processing system is down"
+          description: "Payment processor is unavailable. New subscriptions and payments cannot be processed."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/payment-down"
+
+  - name: critical.slo_violations
+    interval: 60s
+    rules:
+      - alert: SLOViolationAvailability
+        expr: |
+          (
+            1 - (
+              sum(rate(http_requests_total{job="receipt-vault-backend",status_code=~"5.."}[1h]))
+              /
+              sum(rate(http_requests_total{job="receipt-vault-backend"}[1h]))
+            )
+          ) * 100 < 99.9
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+          service: receipt-vault
+          escalation: slo_violation
+        annotations:
+          summary: "SLO violation: Availability is {{ $value }}%"
+          description: "Service availability {{ $value }}% is below our 99.9% SLO for the last hour."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/slo-violation"
+
+      - alert: SLOViolationLatency
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(http_request_duration_seconds_bucket{job="receipt-vault-backend"}[5m])) by (le)
+          ) > 0.5
+        for: 5m
+        labels:
+          severity: critical
+          team: backend
+          service: receipt-vault
+          escalation: slo_violation
+        annotations:
+          summary: "SLO violation: 95th percentile latency is {{ $value }}s"
+          description: "API latency {{ $value }}s exceeds our 200ms SLO."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/latency-slo"
+
+  - name: critical.external_dependencies
+    interval: 60s
+    rules:
+      - alert: GoogleVisionAPIDown
+        expr: |
+          sum(rate(external_api_errors_total{service="google-vision"}[5m])) > 0.5
+        for: 3m
+        labels:
+          severity: critical
+          team: backend
+          service: ocr
+          escalation: business_critical
+        annotations:
+          summary: "Google Vision API failures"
+          description: "Google Vision API error rate is {{ $value }}/second. OCR processing is affected."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/google-vision-down"
+
+      - alert: WorkOSDown
+        expr: |
+          sum(rate(external_api_errors_total{service="workos"}[5m])) > 0.1
+        for: 3m
+        labels:
+          severity: critical
+          team: backend
+          service: authentication
+          escalation: business_critical
+        annotations:
+          summary: "WorkOS authentication service failures"
+          description: "WorkOS API error rate is {{ $value }}/second. User authentication is affected."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/workos-down"
+
+  - name: critical.data_integrity
+    interval: 300s
+    rules:
+      - alert: DataCorruption
+        expr: |
+          sum(database_integrity_check_failures) > 0
+        for: 0s
+        labels:
+          severity: critical
+          team: database
+          service: postgresql
+          escalation: data_integrity
+        annotations:
+          summary: "Database integrity check failure"
+          description: "Database integrity checks have failed. Potential data corruption detected."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/data-corruption"
+
+      - alert: BackupFailure
+        expr: |
+          sum(backup_failures_total) > 0
+        for: 0s
+        labels:
+          severity: critical
+          team: database
+          service: backup
+          escalation: data_integrity
+        annotations:
+          summary: "Database backup failure"
+          description: "Database backup has failed. Data recovery capability is compromised."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/backup-failure"
+
+      - alert: ReplicationLag
+        expr: |
+          pg_replication_lag_seconds > 300
+        for: 5m
+        labels:
+          severity: critical
+          team: database
+          service: postgresql
+          escalation: data_integrity
+        annotations:
+          summary: "Database replication lag: {{ $value }}s"
+          description: "Database replication is lagging by {{ $value }} seconds. Data consistency is at risk."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/replication-lag"

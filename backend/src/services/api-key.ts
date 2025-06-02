@@ -1,6 +1,6 @@
-import { db } from '@/database/connection';
-import { redis } from '@/config/redis';
-import { logger } from '@/utils/logger';
+import { db } from '../database/connection';
+import { redis } from '../config/redis';
+import { logger } from '../utils/logger';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 

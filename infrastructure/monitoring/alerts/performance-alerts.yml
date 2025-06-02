@@ -1,0 +1,375 @@
+# Performance Alerts for Receipt Vault Pro
+# These alerts monitor performance degradation and capacity issues
+
+groups:
+  - name: performance.api_latency
+    interval: 30s
+    rules:
+      - alert: HighAPILatency
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(http_request_duration_seconds_bucket{job="receipt-vault-backend"}[5m])) by (le)
+          ) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+          service: receipt-vault
+        annotations:
+          summary: "High API latency: {{ $value }}s"
+          description: "95th percentile API response time is {{ $value }}s, above our 200ms target."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/high-latency"
+          dashboard_url: "https://grafana.receiptvault.com/d/api-performance"
+
+      - alert: SlowEndpoints
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(http_request_duration_seconds_bucket{job="receipt-vault-backend"}[5m])) by (le, route)
+          ) > 1.0
+        for: 3m
+        labels:
+          severity: warning
+          team: backend
+          service: receipt-vault
+        annotations:
+          summary: "Slow endpoint detected: {{ $labels.route }}"
+          description: "Endpoint {{ $labels.route }} has 95th percentile latency of {{ $value }}s."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/slow-endpoints"
+
+      - alert: ReceiptProcessingLatency
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(receipts_processing_duration_seconds_bucket[5m])) by (le)
+          ) > 30
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+          service: receipt-processing
+        annotations:
+          summary: "Slow receipt processing: {{ $value }}s"
+          description: "Receipt processing 95th percentile time is {{ $value }}s, above 30s target."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/slow-processing"
+
+      - alert: OCRProcessingLatency
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(ocr_processing_duration_seconds_bucket[5m])) by (le)
+          ) > 15
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+          service: ocr
+        annotations:
+          summary: "Slow OCR processing: {{ $value }}s"
+          description: "OCR processing 95th percentile time is {{ $value }}s, above 15s target."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/slow-ocr"
+
+  - name: performance.throughput
+    interval: 60s
+    rules:
+      - alert: LowThroughput
+        expr: |
+          sum(rate(http_requests_total{job="receipt-vault-backend"}[5m])) < 0.1
+        for: 10m
+        labels:
+          severity: warning
+          team: backend
+          service: receipt-vault
+        annotations:
+          summary: "Low API throughput: {{ $value }} req/s"
+          description: "API request rate {{ $value }} req/s is unusually low, indicating potential issues."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/low-throughput"
+
+      - alert: ReceiptProcessingBacklog
+        expr: |
+          sum(job_queue_waiting{queue="receipt-processing"}) > 100
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+          service: job-queue
+        annotations:
+          summary: "Receipt processing backlog: {{ $value }} jobs"
+          description: "{{ $value }} receipt processing jobs are waiting in queue, indicating capacity issues."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/processing-backlog"
+
+      - alert: EmailProcessingBacklog
+        expr: |
+          sum(job_queue_waiting{queue="email-processing"}) > 50
+        for: 10m
+        labels:
+          severity: warning
+          team: backend
+          service: job-queue
+        annotations:
+          summary: "Email processing backlog: {{ $value }} jobs"
+          description: "{{ $value }} email processing jobs are waiting, may impact receipt ingestion."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/email-backlog"
+
+  - name: performance.resource_utilization
+    interval: 60s
+    rules:
+      - alert: HighCPUUsage
+        expr: |
+          100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 10m
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}: {{ $value }}%"
+          description: "CPU usage {{ $value }}% is above 80% threshold on {{ $labels.instance }}."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/high-cpu"
+
+      - alert: HighMemoryUsage
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}: {{ $value }}%"
+          description: "Memory usage {{ $value }}% is above 85% threshold on {{ $labels.instance }}."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/high-memory"
+
+      - alert: ApplicationMemoryLeak
+        expr: |
+          increase(process_heap_bytes{job="receipt-vault-backend"}[1h]) > 100000000
+        for: 0s
+        labels:
+          severity: warning
+          team: backend
+          service: receipt-vault
+        annotations:
+          summary: "Potential memory leak in application"
+          description: "Application heap usage increased by {{ $value }} bytes in the last hour."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/memory-leak"
+
+      - alert: HighEventLoopLag
+        expr: |
+          nodejs_eventloop_lag_seconds{job="receipt-vault-backend"} > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+          service: receipt-vault
+        annotations:
+          summary: "High Node.js event loop lag: {{ $value }}s"
+          description: "Event loop lag {{ $value }}s indicates Node.js process is overloaded."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/event-loop-lag"
+
+  - name: performance.database
+    interval: 60s
+    rules:
+      - alert: DatabaseHighConnections
+        expr: |
+          pg_stat_database_numbackends / pg_settings_max_connections * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          team: database
+          service: postgresql
+        annotations:
+          summary: "High database connections: {{ $value }}%"
+          description: "Database connection usage {{ $value }}% is above 80% of maximum."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/high-db-connections"
+
+      - alert: DatabaseSlowQueries
+        expr: |
+          pg_stat_activity_max_tx_duration > 30
+        for: 5m
+        labels:
+          severity: warning
+          team: database
+          service: postgresql
+        annotations:
+          summary: "Slow database queries detected"
+          description: "Long-running database transaction detected, duration {{ $value }}s."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/slow-queries"
+
+      - alert: DatabaseLockWaits
+        expr: |
+          pg_locks_count{mode="ExclusiveLock"} > 10
+        for: 3m
+        labels:
+          severity: warning
+          team: database
+          service: postgresql
+        annotations:
+          summary: "High database lock contention"
+          description: "{{ $value }} exclusive locks detected, indicating potential contention."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/lock-contention"
+
+      - alert: DatabaseDiskUsage
+        expr: |
+          pg_database_size_bytes / (1024*1024*1024) > 10
+        for: 0s
+        labels:
+          severity: info
+          team: database
+          service: postgresql
+        annotations:
+          summary: "Database size is {{ $value }}GB"
+          description: "Database size {{ $value }}GB is approaching capacity planning thresholds."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/database-size"
+
+  - name: performance.cache
+    interval: 60s
+    rules:
+      - alert: RedisHighMemoryUsage
+        expr: |
+          redis_memory_used_bytes / redis_memory_max_bytes * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+          team: cache
+          service: redis
+        annotations:
+          summary: "High Redis memory usage: {{ $value }}%"
+          description: "Redis memory usage {{ $value }}% is above 90% threshold."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/redis-memory"
+
+      - alert: RedisHighConnections
+        expr: |
+          redis_connected_clients > 1000
+        for: 5m
+        labels:
+          severity: warning
+          team: cache
+          service: redis
+        annotations:
+          summary: "High Redis connections: {{ $value }}"
+          description: "Redis has {{ $value }} connected clients, above normal levels."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/redis-connections"
+
+      - alert: CacheMissRateHigh
+        expr: |
+          (
+            sum(rate(redis_keyspace_misses_total[5m]))
+            /
+            (sum(rate(redis_keyspace_hits_total[5m])) + sum(rate(redis_keyspace_misses_total[5m])))
+          ) * 100 > 50
+        for: 10m
+        labels:
+          severity: warning
+          team: backend
+          service: cache
+        annotations:
+          summary: "High cache miss rate: {{ $value }}%"
+          description: "Cache miss rate {{ $value }}% indicates poor cache effectiveness."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/cache-miss-rate"
+
+  - name: performance.external_apis
+    interval: 120s
+    rules:
+      - alert: GoogleVisionAPILatency
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(external_api_duration_seconds_bucket{service="google-vision"}[5m])) by (le)
+          ) > 10
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+          service: ocr
+        annotations:
+          summary: "High Google Vision API latency: {{ $value }}s"
+          description: "Google Vision API response time {{ $value }}s is above normal levels."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/vision-api-latency"
+
+      - alert: WorkOSAPILatency
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(external_api_duration_seconds_bucket{service="workos"}[5m])) by (le)
+          ) > 5
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+          service: authentication
+        annotations:
+          summary: "High WorkOS API latency: {{ $value }}s"
+          description: "WorkOS API response time {{ $value }}s is affecting authentication performance."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/workos-latency"
+
+      - alert: ExternalAPIErrorRate
+        expr: |
+          sum(rate(external_api_errors_total[5m])) by (service) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "High error rate for {{ $labels.service }}: {{ $value }}/s"
+          description: "External API {{ $labels.service }} error rate {{ $value }}/s is above threshold."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/external-api-errors"
+
+  - name: performance.file_operations
+    interval: 60s
+    rules:
+      - alert: FileUploadLatency
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(file_upload_duration_seconds_bucket[5m])) by (le)
+          ) > 10
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+          service: file-upload
+        annotations:
+          summary: "Slow file uploads: {{ $value }}s"
+          description: "File upload 95th percentile time {{ $value }}s is above 10s threshold."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/slow-uploads"
+
+      - alert: StorageSpaceWarning
+        expr: |
+          (
+            sum(node_filesystem_size_bytes{mountpoint="/uploads"}) - 
+            sum(node_filesystem_avail_bytes{mountpoint="/uploads"})
+          ) / sum(node_filesystem_size_bytes{mountpoint="/uploads"}) * 100 > 70
+        for: 5m
+        labels:
+          severity: warning
+          team: infrastructure
+          service: storage
+        annotations:
+          summary: "File storage usage: {{ $value }}%"
+          description: "File storage usage {{ $value }}% is above 70% threshold."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/storage-space"
+
+  - name: performance.business_metrics
+    interval: 300s
+    rules:
+      - alert: LowReceiptProcessingRate
+        expr: |
+          rate(receipts_processed_total{status="success"}[1h]) < 0.01
+        for: 30m
+        labels:
+          severity: warning
+          team: backend
+          service: receipt-processing
+        annotations:
+          summary: "Low receipt processing rate: {{ $value }} receipts/s"
+          description: "Receipt processing rate {{ $value }} receipts/s is below expected levels."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/low-processing-rate"
+
+      - alert: UserEngagementDrop
+        expr: |
+          (
+            sum(rate(http_requests_total{user_type!="anonymous"}[1h])) 
+            / 
+            sum(rate(http_requests_total{user_type!="anonymous"}[1d] offset 1d))
+          ) < 0.8
+        for: 2h
+        labels:
+          severity: info
+          team: product
+          service: user-engagement
+        annotations:
+          summary: "User engagement decreased by {{ $value }}%"
+          description: "User activity is {{ $value }}% of yesterday's levels at this time."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/user-engagement"

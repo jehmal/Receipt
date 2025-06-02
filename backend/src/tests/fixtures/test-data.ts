@@ -2,10 +2,13 @@ import { v4 as uuidv4 } from 'uuid';
 
 // Test Data Factories
 export class TestDataFactory {
+  private static counter = 0;
+  
   static createUser(overrides: Partial<any> = {}) {
+    this.counter++;
     return {
       id: uuidv4(),
-      email: `test.user.${Date.now()}@example.com`,
+      email: `test.user.${Date.now()}.${this.counter}@example.com`,
       name: 'Test User',
       organizationId: uuidv4(),
       workosUserId: `user_${uuidv4().replace(/-/g, '')}`,

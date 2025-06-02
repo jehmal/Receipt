@@ -1,10 +1,10 @@
 import bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
-import { db } from '@/database/connection';
-import config from '@/config';
-import { jwtService, TokenPair, DeviceInfo } from '@/config/jwt';
-import { redis as redisClient } from '@/config/redis';
-// import { logAction } from '@/services/audit';
+import { db } from '../database/connection';
+import config from '../config/index';
+import { jwtService, TokenPair, DeviceInfo } from '../config/jwt';
+import { redis as redisClient } from '../config/redis';
+// import { logAction } from './audit';
 
 export interface CreateUserData {
   email: string;

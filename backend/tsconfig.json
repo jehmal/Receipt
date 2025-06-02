@@ -30,7 +30,8 @@
       "@/middleware/*": ["src/middleware/*"],
       "@/utils/*": ["src/utils/*"],
       "@/config/*": ["src/config/*"]
-    }
+    },
+    "types": ["node", "jest"]
   },
   "include": [
     "src/**/*"
@@ -38,6 +39,7 @@
   "exclude": [
     "node_modules",
     "dist",
+    "src/tests/**/*",
     "**/*.test.ts",
     "**/*.spec.ts"
   ]

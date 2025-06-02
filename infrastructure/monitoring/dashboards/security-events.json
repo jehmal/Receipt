@@ -1,0 +1,810 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Receipt Vault Pro - Security Events",
+    "tags": ["receipt-vault", "security", "monitoring"],
+    "style": "dark",
+    "timezone": "browser",
+    "editable": true,
+    "graphTooltip": 0,
+    "time": {
+      "from": "now-4h",
+      "to": "now"
+    },
+    "refresh": "1m",
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": "-- Grafana --",
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(255, 96, 96, 1)",
+          "name": "Security Alerts",
+          "type": "dashboard"
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Security Overview",
+        "type": "row",
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 0
+        },
+        "collapsed": false
+      },
+      {
+        "id": 2,
+        "title": "Authentication Failures",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(increase(auth_failures_total[1h]))",
+            "legendFormat": "Failed Logins (1h)",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 10
+                },
+                {
+                  "color": "red",
+                  "value": 50
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 0,
+          "y": 1
+        }
+      },
+      {
+        "id": 3,
+        "title": "Suspicious Activity Score",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{status_code=\"401\"}[5m])) * 100",
+            "legendFormat": "Suspicious Score",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 5
+                },
+                {
+                  "color": "red",
+                  "value": 15
+                }
+              ]
+            },
+            "unit": "short",
+            "min": 0,
+            "max": 100
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 6,
+          "y": 1
+        }
+      },
+      {
+        "id": 4,
+        "title": "Rate Limiting Events",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(increase(http_requests_total{status_code=\"429\"}[1h]))",
+            "legendFormat": "Rate Limited (1h)",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 100
+                },
+                {
+                  "color": "red",
+                  "value": 1000
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 12,
+          "y": 1
+        }
+      },
+      {
+        "id": 5,
+        "title": "Security Alerts Count",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(increase(security_alerts_total[1h]))",
+            "legendFormat": "Security Alerts (1h)",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 5
+                },
+                {
+                  "color": "red",
+                  "value": 20
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 18,
+          "y": 1
+        }
+      },
+      {
+        "id": 6,
+        "title": "Authentication Events",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "sum(rate(auth_success_total[5m]))",
+            "legendFormat": "Successful Logins",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(rate(auth_failures_total[5m]))",
+            "legendFormat": "Failed Logins",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(rate(auth_failures_total{reason=\"brute_force\"}[5m]))",
+            "legendFormat": "Brute Force Attempts",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              },
+              "lineInterpolation": "linear",
+              "lineWidth": 1,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "off"
+              }
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                }
+              ]
+            },
+            "unit": "ops"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 9
+        }
+      },
+      {
+        "id": 7,
+        "title": "Top Failed Login IPs",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "topk(10, sum(increase(auth_failures_total[1h])) by (ip_address))",
+            "legendFormat": "{{ip_address}}",
+            "refId": "A",
+            "format": "table"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "align": "auto",
+              "displayMode": "auto"
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 10
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 17
+        }
+      },
+      {
+        "id": 8,
+        "title": "HTTP Attack Patterns",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{status_code=\"400\"}[5m]))",
+            "legendFormat": "Bad Requests",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(rate(http_requests_total{status_code=\"403\"}[5m]))",
+            "legendFormat": "Forbidden",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(rate(http_requests_total{status_code=\"404\"}[5m]))",
+            "legendFormat": "Not Found",
+            "refId": "C"
+          },
+          {
+            "expr": "sum(rate(http_requests_total{status_code=\"401\"}[5m]))",
+            "legendFormat": "Unauthorized",
+            "refId": "D"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              },
+              "lineInterpolation": "linear",
+              "lineWidth": 1,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "off"
+              }
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                }
+              ]
+            },
+            "unit": "reqps"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 17
+        }
+      },
+      {
+        "id": 9,
+        "title": "SQL Injection Attempts",
+        "type": "logs",
+        "targets": [
+          {
+            "expr": "{kubernetes_container_name=\"nginx\"} |~ \"(?i)(union|select|insert|update|delete|drop|exec)\"",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 25
+        }
+      },
+      {
+        "id": 10,
+        "title": "API Abuse Detection",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "topk(5, sum(rate(http_requests_total[5m])) by (remote_addr)) > 50",
+            "legendFormat": "High Volume IPs - {{remote_addr}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              },
+              "lineInterpolation": "linear",
+              "lineWidth": 1,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "area"
+              }
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 50
+                }
+              ]
+            },
+            "unit": "reqps"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 33
+        }
+      },
+      {
+        "id": 11,
+        "title": "File Upload Security",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "sum(rate(file_upload_errors_total{reason=\"malicious\"}[5m]))",
+            "legendFormat": "Malicious File Blocks",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(rate(file_upload_errors_total{reason=\"size_limit\"}[5m]))",
+            "legendFormat": "Size Limit Violations",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(rate(file_upload_errors_total{reason=\"type_not_allowed\"}[5m]))",
+            "legendFormat": "Disallowed File Types",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              },
+              "lineInterpolation": "linear",
+              "lineWidth": 1,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "off"
+              }
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                }
+              ]
+            },
+            "unit": "ops"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 33
+        }
+      },
+      {
+        "id": 12,
+        "title": "Security Events by Type",
+        "type": "piechart",
+        "targets": [
+          {
+            "expr": "sum(increase(security_alerts_total[1h])) by (alert_type)",
+            "legendFormat": "{{alert_type}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              }
+            },
+            "mappings": [],
+            "unit": "short"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 41
+        }
+      },
+      {
+        "id": 13,
+        "title": "OWASP Top 10 Detection",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "sum(increase(security_alerts_total[1h])) by (owasp_category)",
+            "legendFormat": "{{owasp_category}}",
+            "refId": "A",
+            "format": "table"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "align": "auto",
+              "displayMode": "color-background"
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 5
+                },
+                {
+                  "color": "red",
+                  "value": 20
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 41
+        }
+      },
+      {
+        "id": 14,
+        "title": "User Session Security",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "sum(rate(session_hijack_attempts_total[5m]))",
+            "legendFormat": "Session Hijack Attempts",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(rate(csrf_attacks_blocked_total[5m]))",
+            "legendFormat": "CSRF Attacks Blocked",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(rate(xss_attempts_blocked_total[5m]))",
+            "legendFormat": "XSS Attempts Blocked",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              },
+              "lineInterpolation": "linear",
+              "lineWidth": 1,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "off"
+              }
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                }
+              ]
+            },
+            "unit": "ops"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 49
+        }
+      },
+      {
+        "id": 15,
+        "title": "Data Exfiltration Monitoring",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "sum(rate(data_export_requests_total[5m])) by (user_type)",
+            "legendFormat": "Data Exports - {{user_type}}",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(rate(bulk_download_attempts_total[5m]))",
+            "legendFormat": "Bulk Download Attempts",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(rate(suspicious_data_access_total[5m]))",
+            "legendFormat": "Suspicious Data Access",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              },
+              "lineInterpolation": "linear",
+              "lineWidth": 1,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "off"
+              }
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                }
+              ]
+            },
+            "unit": "ops"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 57
+        }
+      }
+    ]
+  }
+}

@@ -1,8 +1,8 @@
 import { Queue, Worker, Job, QueueEvents } from 'bullmq';
 import Redis from 'ioredis';
-import { logger } from '@/utils/logger';
+import { logger } from '../utils/logger';
 import { ocrService } from './ocr';
-import { config } from '@/config';
+import { config } from '../config/index';
 
 // Job types
 export interface OCRJobData {
@@ -234,7 +234,7 @@ class JobQueueService {
       // Get user and company info for enhanced ML categorization
       let companyId: string | undefined;
       try {
-        const { db } = await import('@/database/connection');
+        const { db } = await import('../database/connection');
         const userResult = await db.query(
           'SELECT company_id FROM users WHERE id = $1',
           [userId]

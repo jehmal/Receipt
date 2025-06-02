@@ -3,9 +3,9 @@ import { createHash } from 'crypto';
 import { storageService } from './storage';
 import { receiptService, CreateReceiptData } from './receipts';
 import { jobQueueService } from './job-queue';
-import { db } from '@/database/connection';
-import { logger } from '@/utils/logger';
-import { config } from '@/config';
+import { db } from '../database/connection';
+import { logger } from '../utils/logger';
+import { config } from '../config/index';
 
 export interface EmailAttachment {
   filename: string;

@@ -7,23 +7,23 @@ import staticFiles from '@fastify/static';
 import jwt from '@fastify/jwt';
 import path from 'path';
 
-import config from '@/config';
-import { logger } from '@/utils/logger';
-import { errorHandler } from '@/middleware/error-handler';
-import { authPlugin } from '@/middleware/auth';
+import config from './config/index';
+import { logger } from './utils/logger';
+import { errorHandler } from './middleware/error-handler';
+import { authPlugin } from './middleware/auth';
 
 // Route imports  
-import authRoutes from '@/routes/auth';
-import receiptRoutes from '@/routes/receipts';
-import mobileReceiptRoutes from '@/routes/receipts-mobile';
-import userContextRoutes from '@/routes/user-context';
-import companyRoutes from '@/routes/companies';
-import searchRoutes from '@/routes/search';
-import jobsRoutes from '@/routes/jobs';
-import emailProcessingRoutes from '@/routes/email-processing';
-import securityRoutes from '@/routes/security';
-import analyticsRoutes from '@/routes/analytics';
-import approvalWorkflowRoutes from '@/routes/approval-workflow';
+import authRoutes from './routes/auth';
+import receiptRoutes from './routes/receipts';
+import mobileReceiptRoutes from './routes/receipts-mobile';
+import userContextRoutes from './routes/user-context';
+import companyRoutes from './routes/companies';
+import searchRoutes from './routes/search';
+import jobsRoutes from './routes/jobs';
+import emailProcessingRoutes from './routes/email-processing';
+import securityRoutes from './routes/security';
+import analyticsRoutes from './routes/analytics';
+import approvalWorkflowRoutes from './routes/approval-workflow';
 // Other routes temporarily disabled for now
 // import userRoutes from '@/routes/users';
 // import adminRoutes from '@/routes/admin';

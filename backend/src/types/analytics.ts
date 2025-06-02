@@ -6,6 +6,15 @@ export interface AnalyticsFilter {
   categoryId?: string;
 }
 
+export interface AnalyticsQuery {
+  startDate?: string;
+  endDate?: string;
+  companyId?: string;
+  groupBy?: 'day' | 'week' | 'month' | 'year';
+  category?: string;
+  userId?: string;
+}
+
 export interface SystemMetricsFilter {
   metric?: string;
   timeRange?: string;
@@ -38,4 +47,41 @@ export interface SystemMetrics {
   value: number;
   unit: string;
   timestamp: Date;
+}
+
+export interface ElasticsearchReceiptDocument {
+  id: string;
+  userId: string;
+  companyId: string;
+  originalFilename: string;
+  vendorName: string;
+  totalAmount: number;
+  currency: string;
+  receiptDate: string;
+  category: string;
+  subcategory?: string;
+  tags: string[];
+  description?: string;
+  notes?: string;
+  searchableText: string;
+  createdAt: string;
+  updatedAt: string;
+  status: string;
+  extractedItems?: any[];
+}
+
+export interface ReceiptSearchQuery {
+  query?: string;
+  category?: string;
+  minAmount?: number;
+  maxAmount?: number;
+  startDate?: string;
+  endDate?: string;
+  tags?: string[];
+  companyId?: string;
+  userId?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: 'date' | 'amount' | 'relevance';
+  sortOrder?: 'asc' | 'desc';
 }

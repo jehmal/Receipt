@@ -209,7 +209,7 @@ describe('Testing Infrastructure Validation', () => {
 
       // Assert
       // User data should be realistic
-      expect(user.email).toMatch(/^test\.user\.\d+@example\.com$/);
+      expect(user.email).toMatch(/^test\.user\.\d+\.\d+@example\.com$/);
       expect(user.workosUserId).toMatch(/^user_[a-f0-9]{32}$/);
 
       // Receipt data should be realistic

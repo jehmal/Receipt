@@ -1,8 +1,8 @@
-import { config } from 'dotenv';
+import { config as dotenvConfig } from 'dotenv';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
-config();
+dotenvConfig();
 
 // Environment configuration with validation
 export const ENV = process.env.NODE_ENV || 'development';
@@ -14,16 +14,24 @@ export const IS_TEST = ENV === 'test';
 export const SERVER_CONFIG = {
   port: parseInt(process.env.PORT || '3000', 10),
   host: process.env.HOST || '0.0.0.0',
-  trustProxy: process.env.TRUST_PROXY === 'true'
+  trustProxy: process.env.TRUST_PROXY === 'true',
+  env: ENV,
+  corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:8080'
 };
 
 // Database configuration
 export const DATABASE_CONFIG = {
-  connectionString: process.env.DATABASE_URL || '',
+  connectionString: process.env.DATABASE_URL || `postgresql://postgres:postgres@localhost:5432/${IS_TEST ? 'receiptvault_test' : 'receipt_vault'}`,
   ssl: IS_PRODUCTION ? { rejectUnauthorized: false } : false,
   max: parseInt(process.env.DB_POOL_MAX || '20', 10),
   idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT || '30000', 10),
-  connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT || '2000', 10)
+  connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT || '2000', 10),
+  // Legacy support for individual properties
+  host: process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT || '5432', 10),
+  user: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASSWORD || 'postgres',
+  name: process.env.DB_NAME || (IS_TEST ? 'receiptvault_test' : 'receipt_vault')
 };
 
 // Redis configuration
@@ -42,11 +50,18 @@ export const JWT_CONFIG = {
   refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '30d'
 };
 
+// Rate Limiting configuration
+export const RATE_LIMIT_CONFIG = {
+  max: parseInt(process.env.RATE_LIMIT_MAX || '1000', 10),
+  window: parseInt(process.env.RATE_LIMIT_WINDOW || '900000', 10) // 15 minutes
+};
+
 // AWS configuration
 export const AWS_CONFIG = {
   region: process.env.AWS_REGION || 'us-east-1',
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  s3Bucket: process.env.S3_BUCKET || 'receipt-vault-uploads',
   s3: {
     bucket: process.env.S3_BUCKET || 'receipt-vault-uploads',
     region: process.env.S3_REGION || process.env.AWS_REGION || 'us-east-1'
@@ -108,8 +123,8 @@ export const FEATURES = {
 export function validateConfig(): void {
   const errors: string[] = [];
 
-  if (!DATABASE_CONFIG.connectionString) {
-    errors.push('DATABASE_URL is required');
+  if (!DATABASE_CONFIG.connectionString && !DATABASE_CONFIG.host) {
+    errors.push('DATABASE_URL or DB_HOST is required');
   }
 
   if (IS_PRODUCTION) {
@@ -129,7 +144,29 @@ export function validateConfig(): void {
   }
 }
 
-// Export all configurations
+// Upload configuration
+export const UPLOAD_CONFIG = {
+  maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '50485760', 10), // 50MB
+  allowedMimeTypes: process.env.ALLOWED_MIME_TYPES?.split(',') || [
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'application/pdf'
+  ],
+  uploadPath: process.env.UPLOAD_PATH || './uploads',
+  tempPath: process.env.TEMP_PATH || './temp'
+};
+
+// Google Cloud configuration (extended)
+export const GOOGLE_CLOUD_CONFIG = {
+  ...GOOGLE_VISION_CONFIG,
+  speech: {
+    projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
+    keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS
+  }
+};
+
+// Export all configurations with consistent naming
 export default {
   env: ENV,
   isProduction: IS_PRODUCTION,
@@ -139,11 +176,15 @@ export default {
   database: DATABASE_CONFIG,
   redis: REDIS_CONFIG,
   jwt: JWT_CONFIG,
+  rateLimit: RATE_LIMIT_CONFIG,
   aws: AWS_CONFIG,
   workos: WORKOS_CONFIG,
   email: EMAIL_CONFIG,
   googleVision: GOOGLE_VISION_CONFIG,
+  googleCloud: GOOGLE_CLOUD_CONFIG,
   security: SECURITY_CONFIG,
   logging: LOGGING_CONFIG,
-  features: FEATURES
+  features: FEATURES,
+  upload: UPLOAD_CONFIG
 };
+

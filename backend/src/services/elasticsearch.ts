@@ -1,6 +1,6 @@
 import { Client as ElasticsearchClient } from 'elasticsearch';
-import { config } from '@/config';
-import { logger } from '@/utils/logger';
+import { config } from '../config/index';
+import { logger } from '../utils/logger';
 
 export interface ElasticsearchReceiptDocument {
   id: string;

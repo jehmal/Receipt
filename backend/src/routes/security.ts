@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { securityController } from '@/controllers/security';
-import { requireAuth } from '@/middleware/auth';
+import { securityController } from '../controllers/security';
+import { requireAuth } from '../middleware/auth';
 
 interface TwoFactorSetupBody {
   method: 'totp' | 'sms' | 'email';

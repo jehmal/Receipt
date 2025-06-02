@@ -4,7 +4,7 @@ import sharp from 'sharp';
 import { fileTypeFromBuffer } from 'file-type';
 import path from 'path';
 import { randomUUID } from 'crypto';
-import config from '@/config';
+import config from '../config/index';
 
 export interface UploadResult {
   filePath: string;

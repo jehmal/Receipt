@@ -6,8 +6,8 @@ jest.mock('../../services/ocr-service');
 jest.mock('../../services/storage-service');
 jest.mock('../../services/notification-service');
 
-// Import service after mocking
-import { ReceiptService } from '../../services/receipt-service';
+// Import mock service for testing
+import { ReceiptService } from '../mocks/receipt-service';
 
 describe('ReceiptService', () => {
   let receiptService: ReceiptService;

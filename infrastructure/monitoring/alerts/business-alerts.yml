@@ -1,0 +1,362 @@
+# Business Alerts for Receipt Vault Pro
+# These alerts monitor business KPIs and operational metrics
+
+groups:
+  - name: business.revenue_operations
+    interval: 300s
+    rules:
+      - alert: LowDailySignups
+        expr: |
+          sum(increase(user_registrations_total[1d])) < 10
+        for: 0s
+        labels:
+          severity: warning
+          team: business
+          service: user-acquisition
+        annotations:
+          summary: "Low daily signups: {{ $value }}"
+          description: "Only {{ $value }} new user registrations today, below target of 10."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/low-signups"
+          dashboard_url: "https://grafana.receiptvault.com/d/business-metrics"
+
+      - alert: HighChurnRate
+        expr: |
+          (
+            sum(increase(user_cancellations_total[7d])) 
+            / 
+            sum(increase(user_registrations_total[7d] offset 7d))
+          ) * 100 > 15
+        for: 0s
+        labels:
+          severity: warning
+          team: business
+          service: customer-retention
+        annotations:
+          summary: "High weekly churn rate: {{ $value }}%"
+          description: "Weekly churn rate {{ $value }}% exceeds 15% threshold."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/high-churn"
+
+      - alert: RevenueDecline
+        expr: |
+          (
+            sum(business_metrics{metric_type="daily_revenue"})
+            /
+            sum(business_metrics{metric_type="daily_revenue"} offset 7d)
+          ) < 0.9
+        for: 0s
+        labels:
+          severity: warning
+          team: business
+          service: revenue
+        annotations:
+          summary: "Daily revenue declined {{ $value }}% vs last week"
+          description: "Daily revenue is {{ $value }}% of last week's level."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/revenue-decline"
+
+      - alert: PaymentFailureSpike
+        expr: |
+          sum(rate(payment_failures_total[1h])) > 0.1
+        for: 30m
+        labels:
+          severity: warning
+          team: business
+          service: payments
+        annotations:
+          summary: "Payment failure spike: {{ $value }}/hour"
+          description: "Payment failure rate {{ $value }}/hour is above normal levels."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/payment-failures"
+
+  - name: business.user_engagement
+    interval: 300s
+    rules:
+      - alert: LowUserEngagement
+        expr: |
+          (
+            sum(rate(http_requests_total{user_type!="anonymous"}[1d]))
+            /
+            count(count by (user_id) (http_requests_total{user_type!="anonymous"}))
+          ) < 10
+        for: 4h
+        labels:
+          severity: info
+          team: product
+          service: user-engagement
+        annotations:
+          summary: "Low user engagement: {{ $value }} requests/user/day"
+          description: "Average user engagement {{ $value }} requests per user per day is below target."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/low-engagement"
+
+      - alert: FeatureAdoptionLow
+        expr: |
+          sum(rate(feature_usage_total{feature="ocr_processing"}[7d])) < 100
+        for: 0s
+        labels:
+          severity: info
+          team: product
+          service: feature-adoption
+        annotations:
+          summary: "Low OCR feature adoption: {{ $value }} uses/week"
+          description: "OCR feature usage {{ $value }} per week is below expectations."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/feature-adoption"
+
+      - alert: SessionDurationDecline
+        expr: |
+          (
+            avg(session_duration_seconds) 
+            / 
+            avg(session_duration_seconds offset 7d)
+          ) < 0.8
+        for: 2h
+        labels:
+          severity: info
+          team: product
+          service: user-experience
+        annotations:
+          summary: "Session duration declined {{ $value }}% vs last week"
+          description: "Average session duration is {{ $value }}% of last week's level."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/session-duration"
+
+  - name: business.receipt_processing
+    interval: 180s
+    rules:
+      - alert: ReceiptProcessingEfficiencyDrop
+        expr: |
+          (
+            sum(rate(receipts_processed_total{status="success"}[1h]))
+            /
+            sum(rate(receipts_processed_total[1h]))
+          ) * 100 < 90
+        for: 30m
+        labels:
+          severity: warning
+          team: operations
+          service: receipt-processing
+        annotations:
+          summary: "Receipt processing efficiency: {{ $value }}%"
+          description: "Receipt processing success rate {{ $value }}% is below 90% target."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/processing-efficiency"
+
+      - alert: OCRAccuracyDegradation
+        expr: |
+          histogram_quantile(0.5, 
+            sum(rate(ocr_confidence_score_bucket[1h])) by (le)
+          ) < 0.8
+        for: 1h
+        labels:
+          severity: warning
+          team: operations
+          service: ocr
+        annotations:
+          summary: "OCR accuracy degraded: median confidence {{ $value }}"
+          description: "Median OCR confidence score {{ $value }} is below 0.8 threshold."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/ocr-accuracy"
+
+      - alert: LowReceiptVolumeBusinessDay
+        expr: |
+          sum(increase(receipts_processed_total{status="success"}[1d])) < 50
+          and on() (
+            hour() >= 8 and hour() <= 18
+          )
+        for: 0s
+        labels:
+          severity: info
+          team: business
+          service: receipt-processing
+        annotations:
+          summary: "Low receipt volume during business hours: {{ $value }}"
+          description: "Only {{ $value }} receipts processed today during business hours."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/low-volume"
+
+      - alert: EmailToReceiptConversionLow
+        expr: |
+          (
+            sum(rate(receipts_processed_total{processing_type="email"}[1d]))
+            /
+            sum(rate(email_receipts_received_total[1d]))
+          ) * 100 < 70
+        for: 2h
+        labels:
+          severity: warning
+          team: operations
+          service: email-processing
+        annotations:
+          summary: "Low email-to-receipt conversion: {{ $value }}%"
+          description: "Email-to-receipt conversion rate {{ $value }}% is below 70% target."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/email-conversion"
+
+  - name: business.customer_support
+    interval: 600s
+    rules:
+      - alert: HighSupportTicketVolume
+        expr: |
+          sum(increase(support_tickets_total[1d])) > 50
+        for: 0s
+        labels:
+          severity: info
+          team: support
+          service: customer-support
+        annotations:
+          summary: "High support ticket volume: {{ $value }}"
+          description: "{{ $value }} support tickets created today, above normal levels."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/high-tickets"
+
+      - alert: LowCustomerSatisfaction
+        expr: |
+          avg(customer_satisfaction_score) < 4.0
+        for: 1d
+        labels:
+          severity: warning
+          team: support
+          service: customer-satisfaction
+        annotations:
+          summary: "Low customer satisfaction: {{ $value }}/5"
+          description: "Average customer satisfaction {{ $value }}/5 is below 4.0 target."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/low-satisfaction"
+
+      - alert: SlowSupportResponse
+        expr: |
+          histogram_quantile(0.8, 
+            sum(rate(support_response_time_seconds_bucket[7d])) by (le)
+          ) > 3600
+        for: 0s
+        labels:
+          severity: warning
+          team: support
+          service: response-time
+        annotations:
+          summary: "Slow support response time: {{ $value }}s"
+          description: "80th percentile support response time {{ $value }}s exceeds 1 hour."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/slow-support"
+
+  - name: business.enterprise_customers
+    interval: 600s
+    rules:
+      - alert: EnterpriseCustomerChurn
+        expr: |
+          sum(increase(enterprise_cancellations_total[30d])) > 1
+        for: 0s
+        labels:
+          severity: critical
+          team: enterprise
+          service: customer-retention
+        annotations:
+          summary: "Enterprise customer churn: {{ $value }} this month"
+          description: "{{ $value }} enterprise customers cancelled this month."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/enterprise-churn"
+
+      - alert: EnterpriseUsageBelowCommitment
+        expr: |
+          (
+            sum(increase(receipts_processed_total{user_type="company_admin"}[30d])) by (company_id)
+            /
+            sum(enterprise_commitment_receipts) by (company_id)
+          ) * 100 < 50
+        for: 0s
+        labels:
+          severity: warning
+          team: enterprise
+          service: usage-monitoring
+        annotations:
+          summary: "Enterprise usage below commitment: {{ $labels.company_id }}"
+          description: "Company {{ $labels.company_id }} using {{ $value }}% of committed volume."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/usage-commitment"
+
+      - alert: EnterpriseAPILimitsApproaching
+        expr: |
+          (
+            sum(rate(http_requests_total{user_type=~"company_.*"}[1h])) by (company_id) * 24
+            /
+            sum(enterprise_api_limits) by (company_id)
+          ) * 100 > 80
+        for: 0s
+        labels:
+          severity: warning
+          team: enterprise
+          service: api-limits
+        annotations:
+          summary: "Enterprise API limits approaching: {{ $labels.company_id }}"
+          description: "Company {{ $labels.company_id }} at {{ $value }}% of daily API limit."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/api-limits"
+
+  - name: business.compliance_business
+    interval: 600s
+    rules:
+      - alert: DataRetentionCompliance
+        expr: |
+          sum(receipts_over_retention_period) > 0
+        for: 1d
+        labels:
+          severity: warning
+          team: compliance
+          service: data-retention
+        annotations:
+          summary: "Receipts over retention period: {{ $value }}"
+          description: "{{ $value }} receipts exceed data retention policy requirements."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/retention-compliance"
+
+      - alert: ExportRequestBacklog
+        expr: |
+          sum(data_export_requests_pending) > 10
+        for: 4h
+        labels:
+          severity: warning
+          team: compliance
+          service: data-export
+        annotations:
+          summary: "Data export request backlog: {{ $value }}"
+          description: "{{ $value }} data export requests pending for more than 4 hours."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/export-backlog"
+
+  - name: business.growth_metrics
+    interval: 900s
+    rules:
+      - alert: NegativeNetGrowth
+        expr: |
+          (
+            sum(increase(user_registrations_total[7d]))
+            -
+            sum(increase(user_cancellations_total[7d]))
+          ) < 0
+        for: 0s
+        labels:
+          severity: warning
+          team: growth
+          service: user-acquisition
+        annotations:
+          summary: "Negative net user growth: {{ $value }}"
+          description: "Net user growth {{ $value }} this week is negative."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/negative-growth"
+
+      - alert: LowTrialConversion
+        expr: |
+          (
+            sum(increase(trial_conversions_total[7d]))
+            /
+            sum(increase(trial_starts_total[7d] offset 14d))
+          ) * 100 < 15
+        for: 0s
+        labels:
+          severity: info
+          team: growth
+          service: trial-conversion
+        annotations:
+          summary: "Low trial conversion rate: {{ $value }}%"
+          description: "Trial-to-paid conversion rate {{ $value }}% is below 15% target."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/trial-conversion"
+
+      - alert: MarketingChannelUnderperforming
+        expr: |
+          (
+            sum(increase(user_registrations_total[7d])) by (acquisition_channel)
+            /
+            sum(increase(user_registrations_total[7d] offset 7d)) by (acquisition_channel)
+          ) < 0.8
+        for: 0s
+        labels:
+          severity: info
+          team: marketing
+          service: channel-performance
+        annotations:
+          summary: "Channel {{ $labels.acquisition_channel }} underperforming"
+          description: "Channel {{ $labels.acquisition_channel }} acquisitions {{ $value }}% of last week."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/channel-performance"

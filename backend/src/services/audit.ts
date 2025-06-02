@@ -1,4 +1,4 @@
-import { query } from '@/database/connection';
+import { query } from '../database/connection';
 
 export interface AuditLog {
   id: string;

@@ -1,11 +1,15 @@
 import Redis from 'ioredis';
-import config from '@/config';
+import config from './index';
 
 let redis: Redis | null = null;
 
 export const getRedis = (): Redis => {
   if (!redis) {
-    redis = new Redis(config.redis.url, {
+    redis = new Redis({
+      host: config.redis.host,
+      port: config.redis.port,
+      password: config.redis.password,
+      db: config.redis.db,
       maxRetriesPerRequest: 3,
       lazyConnect: true
     });

@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
-import { db } from '@/database/connection';
-import { redis as redisClient } from '@/config/redis';
+import { db } from '../database/connection';
+import { redis as redisClient } from '../config/redis';
 
 export interface CreateCompanyData {
   name: string;

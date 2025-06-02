@@ -84,7 +84,15 @@
       "Bash(/home/jehma/.npm-global/lib/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/x64-linux/rg \"TODO|FIXME|BUG|HACK|XXX|DEPRECATED\" --type dart)",
       "Bash(git reset:*)",
       "Bash(git restore:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(npm run test:unit:*)",
+      "Bash(npx jest:*)",
+      "Bash(npm test)",
+      "Bash(npx jest:*)",
+      "Bash(npm test:*)",
+      "Bash(./scripts/setup-test-db.sh:*)",
+      "Bash(npm test:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": []
   }

@@ -1,6 +1,6 @@
-import { db } from '@/database/connection';
-import { logger } from '@/utils/logger';
-import { redis as redisClient } from '@/config/redis';
+import { db } from '../database/connection';
+import { logger } from '../utils/logger';
+import { redis as redisClient } from '../config/redis';
 import { randomUUID, randomBytes } from 'crypto';
 import * as speakeasy from 'speakeasy';
 import * as qrcode from 'qrcode';

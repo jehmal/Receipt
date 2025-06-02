@@ -1,4 +1,4 @@
-import { query } from '@/database/connection';
+import { query } from '../database/connection';
 import bcrypt from 'bcryptjs';
 
 export interface User {

@@ -1,5 +1,5 @@
 import { fileTypeFromBuffer } from 'file-type';
-import config from '@/config';
+import config from '../config/index';
 
 export interface ValidationOptions {
   maxFileSize?: number;

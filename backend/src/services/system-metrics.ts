@@ -1,7 +1,7 @@
 import os from 'os';
-import { db } from '@/database/connection';
-import { redis } from '@/config/redis';
-import { logger } from '@/utils/logger';
+import { db } from '../database/connection';
+import { redis } from '../config/redis';
+import { logger } from '../utils/logger';
 
 interface SystemHealth {
   status: 'healthy' | 'degraded' | 'unhealthy';

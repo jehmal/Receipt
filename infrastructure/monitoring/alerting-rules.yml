@@ -1,0 +1,276 @@
+# Enterprise Alerting Rules for Receipt Vault Pro
+# Production-grade alerts with escalation and severity levels
+
+groups:
+  # Application Health Alerts
+  - name: application.health
+    interval: 30s
+    rules:
+      - alert: ApplicationDown
+        expr: up{job="receipt-vault-backend"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          team: platform
+          service: receipt-vault
+        annotations:
+          summary: "Receipt Vault application is down"
+          description: "Application {{ $labels.instance }} has been down for more than 30 seconds."
+          runbook_url: "https://wiki.company.com/runbooks/application-down"
+
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) * 100 > 5
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+          service: receipt-vault
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value }}% for the last 5 minutes on {{ $labels.instance }}."
+
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+          service: receipt-vault
+        annotations:
+          summary: "High latency detected"
+          description: "95th percentile latency is {{ $value }}s for {{ $labels.instance }}."
+
+  # Infrastructure Alerts
+  - name: infrastructure.health
+    interval: 30s
+    rules:
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value }}% on {{ $labels.instance }}."
+
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value }}% on {{ $labels.instance }}."
+
+      - alert: DiskSpaceLow
+        expr: (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: "Low disk space"
+          description: "Disk usage is {{ $value }}% on {{ $labels.instance }} mount {{ $labels.mountpoint }}."
+
+      - alert: DiskSpaceCritical
+        expr: (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) * 100 > 95
+        for: 1m
+        labels:
+          severity: critical
+          team: infrastructure
+        annotations:
+          summary: "Critical disk space"
+          description: "Disk usage is {{ $value }}% on {{ $labels.instance }} mount {{ $labels.mountpoint }}."
+
+  # Database Alerts
+  - name: database.health
+    interval: 30s
+    rules:
+      - alert: PostgreSQLDown
+        expr: up{job="postgres-exporter"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          team: database
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL is down"
+          description: "PostgreSQL instance {{ $labels.instance }} is down."
+
+      - alert: PostgreSQLHighConnections
+        expr: pg_stat_database_numbackends / pg_settings_max_connections * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          team: database
+          service: postgresql
+        annotations:
+          summary: "High PostgreSQL connections"
+          description: "PostgreSQL connection usage is {{ $value }}% on {{ $labels.instance }}."
+
+      - alert: PostgreSQLSlowQueries
+        expr: rate(pg_stat_activity_max_tx_duration[5m]) > 300
+        for: 5m
+        labels:
+          severity: warning
+          team: database
+          service: postgresql
+        annotations:
+          summary: "Slow PostgreSQL queries detected"
+          description: "PostgreSQL has queries running longer than 5 minutes on {{ $labels.instance }}."
+
+      - alert: PostgreSQLReplicationLag
+        expr: pg_replication_lag > 60
+        for: 2m
+        labels:
+          severity: warning
+          team: database
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL replication lag"
+          description: "PostgreSQL replication lag is {{ $value }} seconds on {{ $labels.instance }}."
+
+  # Redis Alerts
+  - name: redis.health
+    interval: 30s
+    rules:
+      - alert: RedisDown
+        expr: up{job="redis-exporter"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          team: cache
+          service: redis
+        annotations:
+          summary: "Redis is down"
+          description: "Redis instance {{ $labels.instance }} is down."
+
+      - alert: RedisHighMemoryUsage
+        expr: redis_memory_used_bytes / redis_memory_max_bytes * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+          team: cache
+          service: redis
+        annotations:
+          summary: "High Redis memory usage"
+          description: "Redis memory usage is {{ $value }}% on {{ $labels.instance }}."
+
+      - alert: RedisHighConnections
+        expr: redis_connected_clients > 1000
+        for: 5m
+        labels:
+          severity: warning
+          team: cache
+          service: redis
+        annotations:
+          summary: "High Redis connections"
+          description: "Redis has {{ $value }} connected clients on {{ $labels.instance }}."
+
+  # Business Logic Alerts
+  - name: business.metrics
+    interval: 60s
+    rules:
+      - alert: LowReceiptProcessingRate
+        expr: rate(receipts_processed_total[5m]) < 0.1
+        for: 10m
+        labels:
+          severity: warning
+          team: backend
+          service: receipt-processing
+        annotations:
+          summary: "Low receipt processing rate"
+          description: "Receipt processing rate is {{ $value }} receipts/second, which is below normal threshold."
+
+      - alert: HighOCRFailureRate
+        expr: rate(ocr_processing_failures_total[5m]) / rate(ocr_processing_total[5m]) * 100 > 10
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+          service: ocr
+        annotations:
+          summary: "High OCR failure rate"
+          description: "OCR failure rate is {{ $value }}% over the last 5 minutes."
+
+      - alert: FileUploadErrors
+        expr: rate(file_upload_errors_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+          service: file-upload
+        annotations:
+          summary: "File upload errors detected"
+          description: "File upload error rate is {{ $value }} errors/second."
+
+      - alert: UserAuthenticationFailures
+        expr: rate(auth_failures_total[5m]) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          team: security
+          service: authentication
+        annotations:
+          summary: "High authentication failure rate"
+          description: "Authentication failure rate is {{ $value }} failures/second, possible attack."
+
+  # Security Alerts
+  - name: security.monitoring
+    interval: 30s
+    rules:
+      - alert: SuspiciousActivity
+        expr: rate(http_requests_total{status="401"}[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+          team: security
+        annotations:
+          summary: "Suspicious authentication activity"
+          description: "High rate of 401 responses: {{ $value }} requests/second from {{ $labels.instance }}."
+
+      - alert: DDoSAttack
+        expr: rate(http_requests_total[1m]) > 1000
+        for: 1m
+        labels:
+          severity: critical
+          team: security
+        annotations:
+          summary: "Possible DDoS attack"
+          description: "Very high request rate detected: {{ $value }} requests/second on {{ $labels.instance }}."
+
+  # Kubernetes Alerts
+  - name: kubernetes.health
+    interval: 30s
+    rules:
+      - alert: KubernetesNodeNotReady
+        expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          team: infrastructure
+        annotations:
+          summary: "Kubernetes node not ready"
+          description: "Node {{ $labels.node }} has been not ready for more than 5 minutes."
+
+      - alert: KubernetesPodCrashLooping
+        expr: rate(kube_pod_container_status_restarts_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Pod crash looping"
+          description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is crash looping."
+
+      - alert: KubernetesPodNotReady
+        expr: kube_pod_status_ready{condition="true"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Pod not ready"
+          description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has been not ready for more than 5 minutes."

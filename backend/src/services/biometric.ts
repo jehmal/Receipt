@@ -1,6 +1,6 @@
-import { db } from '@/database/connection';
-import { logger } from '@/utils/logger';
-import { redis as redisClient } from '@/config/redis';
+import { db } from '../database/connection';
+import { logger } from '../utils/logger';
+import { redis as redisClient } from '../config/redis';
 import { randomUUID, createHash } from 'crypto';
 
 export interface BiometricTemplate {

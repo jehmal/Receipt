@@ -33,8 +33,8 @@ class AppConfig {
   }
 
   // App configuration constants
-  static const String appName = 'Receipt Vault Pro';
-  static const String appVersion = '1.0.0';
+  static const String appName = 'Receipt Vault';
+  static const String version = '1.0.0';
   
   // API configuration
   static const int requestTimeoutSeconds = 30;
@@ -80,4 +80,30 @@ class AppConfig {
   static const bool enableOfflineMode = true;
   static const bool enableEmailToVault = true;
   static const bool enableSemanticSearch = true;
+
+  // Environment
+  static const bool isProduction = bool.fromEnvironment('dart.vm.product');
+  static const bool isDevelopment = !isProduction;
+  
+  // Feature flags
+  static const bool enableWorkOSAuth = true;
+  static const bool enableAnalytics = false;
+  
+  // File upload limits
+  static const int maxFileSize = 50 * 1024 * 1024; // 50MB
+  static const List<String> allowedFileTypes = [
+    'image/jpeg',
+    'image/png', 
+    'image/gif',
+    'application/pdf'
+  ];
+  
+  // Cache settings
+  static const Duration cacheTimeout = Duration(hours: 24);
+  static const int maxCacheItems = 1000;
+  
+  // UI settings
+  static const Duration animationDuration = Duration(milliseconds: 300);
+  static const double borderRadius = 8.0;
+  static const double spacing = 16.0;
 }

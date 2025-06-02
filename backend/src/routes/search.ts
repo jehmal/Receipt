@@ -1,6 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
-import { searchService } from '@/services/search';
-import { db } from '@/database/connection';
+import { searchService } from '../services/search';
+import { db } from '../database/connection';
 
 const searchRoutes: FastifyPluginAsync = async (fastify) => {
   // Advanced receipt search

@@ -1,8 +1,8 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { analyticsService } from '@/services/analytics';
-import { systemMetricsService } from '@/services/system-metrics';
-import { logger } from '@/utils/logger';
-import { AnalyticsFilter, SystemMetricsFilter } from '@/types/analytics';
+import { analyticsService } from '../../services/analytics';
+import { systemMetricsService } from '../../services/system-metrics';
+import { logger } from '../../utils/logger';
+import { AnalyticsFilter, SystemMetricsFilter } from '../../types/analytics';
 
 interface AnalyticsQueryParams {
   startDate?: string;

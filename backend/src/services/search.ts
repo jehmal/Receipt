@@ -1,7 +1,7 @@
-import { db } from '@/database/connection';
-import { redis as redisClient } from '@/config/redis';
+import { db } from '../database/connection';
+import { redis as redisClient } from '../config/redis';
 import { elasticsearchService, type ElasticsearchSearchOptions } from './elasticsearch';
-import { logger } from '@/utils/logger';
+import { logger } from '../utils/logger';
 
 export interface SearchFilters {
   userId: string;

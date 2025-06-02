@@ -1,6 +1,6 @@
-import { db } from '@/database/connection';
-import { redis as redisClient } from '@/config/redis';
-import { logger } from '@/utils/logger';
+import { db } from '../database/connection';
+import { redis as redisClient } from '../config/redis';
+import { logger } from '../utils/logger';
 import { sendNotification } from './notifications';
 
 export interface ApprovalRule {

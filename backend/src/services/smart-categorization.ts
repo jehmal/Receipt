@@ -303,7 +303,7 @@ class SmartCategorizationService {
         LIMIT 5
       `;
 
-      const { db } = await import('@/database/connection');
+      const { db } = await import('../database/connection');
       const result = await db.query(historyQuery, [userId]);
       
       if (result.rows.length === 0) {
@@ -412,7 +412,7 @@ class SmartCategorizationService {
         ORDER BY ct.total_amount DESC
       `;
 
-      const { db } = await import('@/database/connection');
+      const { db } = await import('../database/connection');
       const result = await db.query(statsQuery, [userId]);
       return result.rows;
 

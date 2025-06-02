@@ -1,0 +1,58 @@
+# CodeQL Configuration for Receipt Vault Pro
+# Enhanced security analysis with custom queries
+
+name: "Receipt Vault Pro CodeQL Config"
+
+# Disable default query suites and use custom security-focused ones
+disable-default-queries: false
+
+# Additional query packs for enhanced security analysis
+packs:
+  - codeql/javascript-queries
+  - codeql/security-extended-queries
+  - codeql/security-and-quality-queries
+
+# Custom queries for Receipt Vault Pro specific patterns
+queries:
+  - name: security-queries
+    uses: security-extended
+  - name: custom-receipt-vault-queries
+    uses: ./.github/codeql/custom-queries/
+
+# Query filters
+query-filters:
+  - include:
+      kind: ["problem", "path-problem"]
+      severity: ["error", "warning"]
+      precision: ["high", "very-high"]
+  - exclude:
+      id: 
+        - js/unused-local-variable  # Too noisy for our codebase
+        - js/debugger-statement     # Handled by linting
+
+# Paths to analyze
+paths:
+  - "backend/src"
+  - "mobile/lib"
+
+# Paths to ignore
+paths-ignore:
+  - "backend/node_modules"
+  - "backend/dist"
+  - "backend/coverage"
+  - "mobile/build"
+  - "mobile/.dart_tool"
+  - "**/test"
+  - "**/tests"
+  - "**/*.test.ts"
+  - "**/*.test.js"
+  - "**/*.spec.ts"
+  - "**/*.spec.js"
+
+# Language-specific configurations
+languages:
+  - javascript
+  - typescript
+
+# Build mode configuration
+build-mode: none  # For JavaScript/TypeScript, no build needed

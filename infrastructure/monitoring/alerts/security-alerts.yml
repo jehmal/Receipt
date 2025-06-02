@@ -1,0 +1,378 @@
+# Security Alerts for Receipt Vault Pro
+# These alerts monitor security threats and suspicious activities
+
+groups:
+  - name: security.authentication
+    interval: 60s
+    rules:
+      - alert: SuspiciousLoginActivity
+        expr: |
+          sum(rate(auth_failures_total[5m])) by (ip_address) > 5
+        for: 2m
+        labels:
+          severity: warning
+          team: security
+          service: authentication
+        annotations:
+          summary: "Suspicious login activity from {{ $labels.ip_address }}"
+          description: "{{ $value }} failed login attempts per second from IP {{ $labels.ip_address }}."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/suspicious-login"
+
+      - alert: AccountLockoutSpike
+        expr: |
+          sum(rate(account_lockout_total[5m])) > 1
+        for: 3m
+        labels:
+          severity: warning
+          team: security
+          service: authentication
+        annotations:
+          summary: "Account lockout spike: {{ $value }}/s"
+          description: "Account lockout rate {{ $value }}/s indicates potential credential stuffing attack."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/account-lockout"
+
+      - alert: CredentialStuffingDetection
+        expr: |
+          sum(rate(auth_failures_total{reason=~"invalid_credentials"}[10m])) > 10
+        for: 5m
+        labels:
+          severity: warning
+          team: security
+          service: authentication
+        annotations:
+          summary: "Potential credential stuffing attack"
+          description: "High rate of authentication failures {{ $value }}/s with invalid credentials."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/credential-stuffing"
+
+      - alert: UnusualLoginLocation
+        expr: |
+          sum(rate(auth_success_total{location_risk="high"}[1h])) > 0.1
+        for: 0s
+        labels:
+          severity: info
+          team: security
+          service: authentication
+        annotations:
+          summary: "Unusual login locations detected"
+          description: "{{ $value }} successful logins from high-risk locations in the last hour."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/unusual-location"
+
+  - name: security.web_attacks
+    interval: 60s
+    rules:
+      - alert: SQLInjectionAttempts
+        expr: |
+          sum(rate(http_requests_total{attack_type="sql_injection"}[5m])) > 0.1
+        for: 1m
+        labels:
+          severity: warning
+          team: security
+          service: web-security
+        annotations:
+          summary: "SQL injection attempts detected"
+          description: "{{ $value }} SQL injection attempts per second detected."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/sql-injection"
+
+      - alert: XSSAttempts
+        expr: |
+          sum(rate(http_requests_total{attack_type="xss"}[5m])) > 0.1
+        for: 1m
+        labels:
+          severity: warning
+          team: security
+          service: web-security
+        annotations:
+          summary: "XSS attack attempts detected"
+          description: "{{ $value }} XSS attack attempts per second detected."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/xss-attacks"
+
+      - alert: CSRFAttacks
+        expr: |
+          sum(rate(csrf_attacks_blocked_total[5m])) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          team: security
+          service: web-security
+        annotations:
+          summary: "CSRF attacks blocked"
+          description: "{{ $value }} CSRF attacks per second are being blocked."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/csrf-attacks"
+
+      - alert: DirectoryTraversalAttempts
+        expr: |
+          sum(rate(http_requests_total{attack_type="directory_traversal"}[5m])) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+          team: security
+          service: web-security
+        annotations:
+          summary: "Directory traversal attempts detected"
+          description: "{{ $value }} directory traversal attempts per second detected."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/directory-traversal"
+
+  - name: security.data_access
+    interval: 120s
+    rules:
+      - alert: UnauthorizedDataAccess
+        expr: |
+          sum(rate(http_requests_total{status_code="403"}[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+          team: security
+          service: authorization
+        annotations:
+          summary: "High rate of unauthorized access attempts"
+          description: "{{ $value }} forbidden requests per second, indicating access control violations."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/unauthorized-access"
+
+      - alert: SuspiciousDataExport
+        expr: |
+          sum(rate(data_export_requests_total[1h])) > 10
+        for: 0s
+        labels:
+          severity: warning
+          team: security
+          service: data-protection
+        annotations:
+          summary: "Unusual data export activity"
+          description: "{{ $value }} data export requests in the last hour, above normal patterns."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/suspicious-export"
+
+      - alert: BulkDataAccess
+        expr: |
+          sum(rate(bulk_data_requests_total[10m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+          team: security
+          service: data-protection
+        annotations:
+          summary: "Bulk data access detected"
+          description: "{{ $value }} bulk data requests per second, potential data exfiltration."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/bulk-access"
+
+      - alert: AdminPanelAccess
+        expr: |
+          sum(rate(admin_panel_access_total[1h])) > 5
+        for: 0s
+        labels:
+          severity: info
+          team: security
+          service: admin-access
+        annotations:
+          summary: "Admin panel access activity"
+          description: "{{ $value }} admin panel accesses in the last hour."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/admin-access"
+
+  - name: security.file_uploads
+    interval: 60s
+    rules:
+      - alert: MaliciousFileUpload
+        expr: |
+          sum(rate(file_upload_errors_total{reason="malicious"}[5m])) > 0.01
+        for: 1m
+        labels:
+          severity: critical
+          team: security
+          service: file-security
+        annotations:
+          summary: "Malicious file upload attempts"
+          description: "{{ $value }} malicious file uploads per second detected and blocked."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/malicious-upload"
+
+      - alert: SuspiciousFileTypes
+        expr: |
+          sum(rate(file_upload_errors_total{reason="suspicious_type"}[5m])) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          team: security
+          service: file-security
+        annotations:
+          summary: "Suspicious file type uploads"
+          description: "{{ $value }} uploads of suspicious file types per second."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/suspicious-files"
+
+      - alert: OversizedFileUploads
+        expr: |
+          sum(rate(file_upload_errors_total{reason="size_exceeded"}[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+          team: security
+          service: file-security
+        annotations:
+          summary: "Oversized file upload attempts"
+          description: "{{ $value }} oversized file uploads per second, potential DoS attempt."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/oversized-files"
+
+  - name: security.api_abuse
+    interval: 60s
+    rules:
+      - alert: APIRateLimitExceeded
+        expr: |
+          sum(rate(http_requests_total{status_code="429"}[5m])) > 5
+        for: 2m
+        labels:
+          severity: warning
+          team: security
+          service: rate-limiting
+        annotations:
+          summary: "High rate limiting activity"
+          description: "{{ $value }} rate limit violations per second detected."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/rate-limit"
+
+      - alert: UnusualAPIUsage
+        expr: |
+          sum(rate(http_requests_total[5m])) by (user_id) > 100
+        for: 5m
+        labels:
+          severity: warning
+          team: security
+          service: api-monitoring
+        annotations:
+          summary: "Unusual API usage by user {{ $labels.user_id }}"
+          description: "User {{ $labels.user_id }} making {{ $value }} requests per second."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/unusual-usage"
+
+      - alert: BotTrafficDetected
+        expr: |
+          sum(rate(http_requests_total{user_agent=~".*bot.*|.*crawler.*|.*spider.*"}[5m])) > 1
+        for: 5m
+        labels:
+          severity: info
+          team: security
+          service: bot-detection
+        annotations:
+          summary: "Bot traffic detected"
+          description: "{{ $value }} requests per second from bot user agents."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/bot-traffic"
+
+  - name: security.infrastructure
+    interval: 120s
+    rules:
+      - alert: SuspiciousNetworkActivity
+        expr: |
+          sum(rate(network_connections_refused_total[5m])) > 10
+        for: 3m
+        labels:
+          severity: warning
+          team: security
+          service: network-security
+        annotations:
+          summary: "Suspicious network activity"
+          description: "{{ $value }} refused network connections per second."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/network-activity"
+
+      - alert: PortScanDetected
+        expr: |
+          sum(rate(port_scan_attempts_total[5m])) > 1
+        for: 2m
+        labels:
+          severity: warning
+          team: security
+          service: network-security
+        annotations:
+          summary: "Port scan detected"
+          description: "{{ $value }} port scan attempts per second detected."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/port-scan"
+
+      - alert: SSHBruteForce
+        expr: |
+          sum(rate(ssh_failed_logins_total[5m])) > 5
+        for: 2m
+        labels:
+          severity: warning
+          team: security
+          service: ssh-security
+        annotations:
+          summary: "SSH brute force attack"
+          description: "{{ $value }} SSH login failures per second detected."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/ssh-brute-force"
+
+  - name: security.compliance
+    interval: 300s
+    rules:
+      - alert: AuditLogFailure
+        expr: |
+          sum(rate(audit_log_failures_total[5m])) > 0.01
+        for: 1m
+        labels:
+          severity: critical
+          team: security
+          service: audit-logging
+        annotations:
+          summary: "Audit logging failures"
+          description: "{{ $value }} audit log failures per second. Compliance at risk."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/audit-failure"
+
+      - alert: ComplianceViolation
+        expr: |
+          sum(compliance_violations_total) > 0
+        for: 0s
+        labels:
+          severity: critical
+          team: security
+          service: compliance
+        annotations:
+          summary: "Compliance violation detected"
+          description: "{{ $value }} compliance violations detected."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/compliance-violation"
+
+      - alert: DataRetentionViolation
+        expr: |
+          sum(data_retention_violations_total) > 0
+        for: 0s
+        labels:
+          severity: warning
+          team: security
+          service: data-retention
+        annotations:
+          summary: "Data retention policy violation"
+          description: "{{ $value }} data retention violations detected."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/retention-violation"
+
+  - name: security.encryption
+    interval: 300s
+    rules:
+      - alert: EncryptionFailure
+        expr: |
+          sum(rate(encryption_failures_total[5m])) > 0.01
+        for: 1m
+        labels:
+          severity: critical
+          team: security
+          service: encryption
+        annotations:
+          summary: "Encryption failures detected"
+          description: "{{ $value }} encryption failures per second. Data security at risk."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/encryption-failure"
+
+      - alert: WeakEncryptionDetected
+        expr: |
+          sum(weak_encryption_usage_total) > 0
+        for: 0s
+        labels:
+          severity: warning
+          team: security
+          service: encryption
+        annotations:
+          summary: "Weak encryption usage detected"
+          description: "{{ $value }} instances of weak encryption detected."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/weak-encryption"
+
+      - alert: CertificateExpiration
+        expr: |
+          (cert_expiry_timestamp - time()) / 86400 < 30
+        for: 0s
+        labels:
+          severity: warning
+          team: security
+          service: certificates
+        annotations:
+          summary: "Certificate expiring in {{ $value }} days"
+          description: "SSL certificate will expire in {{ $value }} days."
+          runbook_url: "https://wiki.receiptvault.com/runbooks/cert-expiry"

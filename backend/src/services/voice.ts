@@ -1,5 +1,5 @@
 import { SpeechClient } from '@google-cloud/speech';
-import { config } from '@/config';
+import { config } from '../config/index';
 import * as fs from 'fs';
 import * as path from 'path';
 import { randomUUID } from 'crypto';

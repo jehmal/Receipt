@@ -1,8 +1,8 @@
 import { ImageAnnotatorClient } from '@google-cloud/vision';
-import { config } from '@/config';
+import config from '../config/index';
 import { storageService } from './storage';
-import { db } from '@/database/connection';
-import { logger } from '@/utils/logger';
+import { db } from '../database/connection';
+import { logger } from '../utils/logger';
 
 export interface OCRResult {
   success: boolean;

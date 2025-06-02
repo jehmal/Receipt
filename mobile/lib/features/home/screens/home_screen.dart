@@ -1,218 +1,292 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../shared/widgets/context_toggle.dart';
-import '../../../shared/models/receipt.dart';
-import '../../receipts/widgets/receipt_card.dart';
-import '../../receipts/providers/receipts_provider.dart';
 import '../../camera/screens/camera_screen.dart';
-import '../widgets/recent_receipts_grid.dart';
-import '../widgets/large_capture_button.dart';
 
-class HomeScreen extends ConsumerStatefulWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
-  @override
-  void initState() {
-    super.initState();
-    // Load recent receipts when screen initializes
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(receiptsProvider.notifier).loadReceipts(limit: 6);
-    });
-  }
+class _HomeScreenState extends State<HomeScreen> {
+  int _currentIndex = 0;
+
+  final List<Widget> _screens = [
+    const DashboardTab(),
+    const CameraTab(),
+    const ReceiptsTab(),
+    const SearchTab(),
+    const ProfileTab(),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    final receiptsState = ref.watch(receiptsProvider);
-    final currentContext = ref.watch(receiptContextProvider);
-
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        title: Row(
-          children: [
-            Icon(
-              Icons.receipt_long,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(width: 8),
-            const Text('Receipt Vault Pro'),
-          ],
-        ),
+        title: const Text('Receipt Vault Pro'),
         actions: [
           IconButton(
-            onPressed: () {
-              // Navigate to settings
-              Navigator.pushNamed(context, '/settings');
-            },
-            icon: const Icon(Icons.settings),
+            icon: const Icon(Icons.notifications_outlined),
+            onPressed: () {},
           ),
         ],
-        elevation: 0,
-        backgroundColor: Colors.transparent,
       ),
-      body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            // Context Toggle
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                child: Column(
-                  children: [
-                    const ContextToggle(),
-                    const SizedBox(height: 8),
-                    Text(
-                      currentContext == ReceiptContext.personal
-                          ? 'Personal Receipts'
-                          : 'Company Receipts',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+      body: _screens[_currentIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        currentIndex: _currentIndex,
+        onTap: (index) => setState(() => _currentIndex = index),
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            activeIcon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.camera_alt_outlined),
+            activeIcon: Icon(Icons.camera_alt),
+            label: 'Camera',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.receipt_outlined),
+            activeIcon: Icon(Icons.receipt),
+            label: 'Receipts',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.search_outlined),
+            activeIcon: Icon(Icons.search),
+            label: 'Search',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person),
+            label: 'Profile',
+          ),
+        ],
+      ),
+      floatingActionButton: _currentIndex == 1 ? null : FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const CameraScreen()),
+          );
+        },
+        child: const Icon(Icons.camera_alt),
+      ),
+    );
+  }
+}
 
-            // Large Capture Button
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: LargeCaptureButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const CameraScreen(),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
+class DashboardTab extends StatelessWidget {
+  const DashboardTab({super.key});
 
-            // Recent Receipts Section
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Recent Receipts',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        // Navigate to full receipts list
-                        DefaultTabController.of(context)?.animateTo(2);
-                      },
-                      child: const Text('View All'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Recent Receipts Grid
-            receiptsState.when(
-              data: (receipts) {
-                if (receipts.isEmpty) {
-                  return SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.all(32.0),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.receipt_long_outlined,
-                            size: 64,
-                            color: Theme.of(context).colorScheme.outline,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'No receipts yet',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Tap the capture button to add your first receipt',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }
-
-                return SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  sliver: RecentReceiptsGrid(receipts: receipts.take(6).toList()),
-                );
-              },
-              loading: () => SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(32.0),
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Theme.of(context).colorScheme.primary,
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Dashboard',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        const Icon(Icons.receipt, size: 32, color: Colors.blue),
+                        const SizedBox(height: 8),
+                        const Text('Total Receipts'),
+                        const SizedBox(height: 4),
+                        Text('156', style: Theme.of(context).textTheme.headlineSmall),
+                      ],
                     ),
                   ),
                 ),
               ),
-              error: (error, stack) => SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Card(
-                    color: Theme.of(context).colorScheme.errorContainer,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.error_outline,
-                            color: Theme.of(context).colorScheme.onErrorContainer,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Failed to load recent receipts',
-                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onErrorContainer,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          TextButton(
-                            onPressed: () {
-                              ref.read(receiptsProvider.notifier).loadReceipts();
-                            },
-                            child: const Text('Retry'),
-                          ),
-                        ],
-                      ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        const Icon(Icons.attach_money, size: 32, color: Colors.green),
+                        const SizedBox(height: 8),
+                        const Text('Total Spent'),
+                        const SizedBox(height: 4),
+                        Text('\$2,456', style: Theme.of(context).textTheme.headlineSmall),
+                      ],
                     ),
                   ),
                 ),
               ),
-            ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'Recent Receipts',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 16),
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: 5,
+            itemBuilder: (context, index) {
+              return Card(
+                child: ListTile(
+                  leading: const CircleAvatar(
+                    child: Icon(Icons.receipt),
+                  ),
+                  title: Text('Receipt ${index + 1}'),
+                  subtitle: Text('Store Name • \$${(index + 1) * 25}.99'),
+                  trailing: const Text('2 days ago'),
+                  onTap: () {},
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
 
-            // Bottom padding
-            const SliverToBoxAdapter(
-              child: SizedBox(height: 32),
+class CameraTab extends StatelessWidget {
+  const CameraTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.camera_alt, size: 64, color: Colors.grey),
+          const SizedBox(height: 16),
+          const Text('Camera Feature', style: TextStyle(fontSize: 24)),
+          const SizedBox(height: 8),
+          const Text('Capture receipt photos here'),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const CameraScreen()),
+              );
+            },
+            child: const Text('Open Camera'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class ReceiptsTab extends StatelessWidget {
+  const ReceiptsTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: 20,
+      itemBuilder: (context, index) {
+        return Card(
+          child: ListTile(
+            leading: const CircleAvatar(child: Icon(Icons.receipt)),
+            title: Text('Receipt ${index + 1}'),
+            subtitle: Text('Store Name • \$${(index + 1) * 15}.99'),
+            trailing: const Icon(Icons.arrow_forward_ios),
+            onTap: () {},
+          ),
+        );
+      },
+    );
+  }
+}
+
+class SearchTab extends StatelessWidget {
+  const SearchTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          TextField(
+            decoration: InputDecoration(
+              hintText: 'Search receipts...',
+              prefixIcon: const Icon(Icons.search),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
-          ],
+          ),
+          const SizedBox(height: 16),
+          const Expanded(
+            child: Center(
+              child: Text('Search results will appear here'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class ProfileTab extends StatelessWidget {
+  const ProfileTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        const Card(
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: Column(
+              children: [
+                CircleAvatar(
+                  radius: 40,
+                  child: Icon(Icons.person, size: 40),
+                ),
+                SizedBox(height: 16),
+                Text('John Doe', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                Text('john.doe@example.com', style: TextStyle(color: Colors.grey)),
+              ],
+            ),
+          ),
         ),
-      ),
+        const SizedBox(height: 16),
+        ListTile(
+          leading: const Icon(Icons.settings),
+          title: const Text('Settings'),
+          trailing: const Icon(Icons.arrow_forward_ios),
+          onTap: () {},
+        ),
+        ListTile(
+          leading: const Icon(Icons.help),
+          title: const Text('Help & Support'),
+          trailing: const Icon(Icons.arrow_forward_ios),
+          onTap: () {},
+        ),
+        ListTile(
+          leading: const Icon(Icons.logout),
+          title: const Text('Logout'),
+          onTap: () {
+            Navigator.pushReplacementNamed(context, '/login');
+          },
+        ),
+      ],
     );
   }
 }

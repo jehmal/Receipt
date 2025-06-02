@@ -1,0 +1,493 @@
+# SLO/SLI Definitions for Receipt Vault Pro
+# Service Level Objectives and Indicators for production monitoring
+
+apiVersion: sloth.slok.dev/v1
+kind: PrometheusServiceLevel
+metadata:
+  name: receipt-vault-pro-slos
+  namespace: monitoring
+spec:
+  service: "receipt-vault-pro"
+  labels:
+    team: "platform"
+    environment: "production"
+  
+  slos:
+    # API Availability SLO - 99.9% uptime
+    - name: "api-availability"
+      objective: 99.9
+      description: "API requests should succeed 99.9% of the time"
+      sli:
+        events:
+          error_query: |
+            sum(rate(http_requests_total{
+              job="receipt-vault-backend",
+              status_code=~"5.."
+            }[{{.window}}]))
+          total_query: |
+            sum(rate(http_requests_total{
+              job="receipt-vault-backend"
+            }[{{.window}}]))
+      alerting:
+        name: "ReceiptVaultAPIAvailabilitySLO"
+        labels:
+          severity: "critical"
+          team: "platform"
+        annotations:
+          summary: "API availability SLO violation"
+          description: "API availability is below 99.9% SLO"
+        page_alert:
+          labels:
+            severity: "critical"
+            escalation: "pagerduty"
+        ticket_alert:
+          labels:
+            severity: "warning"
+            escalation: "slack"
+
+    # API Latency SLO - 95% of requests under 200ms
+    - name: "api-latency-p95"
+      objective: 95.0
+      description: "95% of API requests should complete within 200ms"
+      sli:
+        events:
+          error_query: |
+            sum(rate(http_request_duration_seconds_bucket{
+              job="receipt-vault-backend",
+              le="0.2"
+            }[{{.window}}]))
+          total_query: |
+            sum(rate(http_request_duration_seconds_bucket{
+              job="receipt-vault-backend",
+              le="+Inf"
+            }[{{.window}}]))
+      alerting:
+        name: "ReceiptVaultAPILatencySLO"
+        labels:
+          severity: "warning"
+          team: "backend"
+        annotations:
+          summary: "API latency SLO violation"
+          description: "Less than 95% of requests are completing within 200ms"
+
+    # Receipt Processing Success Rate SLO - 99% success rate
+    - name: "receipt-processing-success"
+      objective: 99.0
+      description: "Receipt processing should succeed 99% of the time"
+      sli:
+        events:
+          error_query: |
+            sum(rate(receipts_processed_total{
+              status!="success"
+            }[{{.window}}]))
+          total_query: |
+            sum(rate(receipts_processed_total[{{.window}}]))
+      alerting:
+        name: "ReceiptProcessingSLO"
+        labels:
+          severity: "critical"
+          team: "backend"
+        annotations:
+          summary: "Receipt processing SLO violation"
+          description: "Receipt processing success rate is below 99%"
+
+    # OCR Processing Latency SLO - 90% under 15 seconds
+    - name: "ocr-processing-latency"
+      objective: 90.0
+      description: "90% of OCR processing should complete within 15 seconds"
+      sli:
+        events:
+          error_query: |
+            sum(rate(ocr_processing_duration_seconds_bucket{
+              le="15"
+            }[{{.window}}]))
+          total_query: |
+            sum(rate(ocr_processing_duration_seconds_bucket{
+              le="+Inf"
+            }[{{.window}}]))
+      alerting:
+        name: "OCRProcessingLatencySLO"
+        labels:
+          severity: "warning"
+          team: "backend"
+        annotations:
+          summary: "OCR processing latency SLO violation"
+          description: "OCR processing time exceeds 15s target for more than 10% of requests"
+
+    # Database Availability SLO - 99.95% uptime
+    - name: "database-availability"
+      objective: 99.95
+      description: "Database should be available 99.95% of the time"
+      sli:
+        events:
+          error_query: |
+            (1 - up{job="postgres-exporter"})
+          total_query: "1"
+      alerting:
+        name: "DatabaseAvailabilitySLO"
+        labels:
+          severity: "critical"
+          team: "database"
+        annotations:
+          summary: "Database availability SLO violation"
+          description: "Database uptime is below 99.95%"
+
+---
+# Custom SLO Recording Rules for Receipt Vault Pro
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: receipt-vault-slo-recording-rules
+  namespace: monitoring
+  labels:
+    app: receipt-vault
+    prometheus: kube-prometheus
+    role: slo-recording-rules
+spec:
+  groups:
+    - name: receipt-vault.slo.api-availability
+      interval: 30s
+      rules:
+        # Error rate calculation
+        - record: receipt_vault:slo_api_availability:rate5m
+          expr: |
+            (
+              sum(rate(http_requests_total{job="receipt-vault-backend",status_code=~"5.."}[5m]))
+              /
+              sum(rate(http_requests_total{job="receipt-vault-backend"}[5m]))
+            )
+
+        # Success rate calculation  
+        - record: receipt_vault:slo_api_availability:success_rate5m
+          expr: |
+            1 - receipt_vault:slo_api_availability:rate5m
+
+        # Error budget calculation (1 - 0.999 = 0.001 = 0.1% error budget)
+        - record: receipt_vault:slo_api_availability:error_budget_remaining
+          expr: |
+            (
+              0.001 - 
+              (
+                sum(increase(http_requests_total{job="receipt-vault-backend",status_code=~"5.."}[30d]))
+                /
+                sum(increase(http_requests_total{job="receipt-vault-backend"}[30d]))
+              )
+            ) / 0.001
+
+    - name: receipt-vault.slo.api-latency
+      interval: 30s
+      rules:
+        # P95 latency calculation
+        - record: receipt_vault:slo_api_latency:p95_5m
+          expr: |
+            histogram_quantile(0.95, 
+              sum(rate(http_request_duration_seconds_bucket{job="receipt-vault-backend"}[5m])) by (le)
+            )
+
+        # Latency SLI - percentage of requests under 200ms
+        - record: receipt_vault:slo_api_latency:success_rate5m
+          expr: |
+            (
+              sum(rate(http_request_duration_seconds_bucket{job="receipt-vault-backend",le="0.2"}[5m]))
+              /
+              sum(rate(http_request_duration_seconds_bucket{job="receipt-vault-backend",le="+Inf"}[5m]))
+            )
+
+        # Latency error budget
+        - record: receipt_vault:slo_api_latency:error_budget_remaining
+          expr: |
+            (
+              0.05 - 
+              (
+                1 - (
+                  sum(increase(http_request_duration_seconds_bucket{job="receipt-vault-backend",le="0.2"}[30d]))
+                  /
+                  sum(increase(http_request_duration_seconds_bucket{job="receipt-vault-backend",le="+Inf"}[30d]))
+                )
+              )
+            ) / 0.05
+
+    - name: receipt-vault.slo.receipt-processing
+      interval: 60s
+      rules:
+        # Receipt processing success rate
+        - record: receipt_vault:slo_receipt_processing:success_rate5m
+          expr: |
+            (
+              sum(rate(receipts_processed_total{status="success"}[5m]))
+              /
+              sum(rate(receipts_processed_total[5m]))
+            )
+
+        # Receipt processing error budget
+        - record: receipt_vault:slo_receipt_processing:error_budget_remaining
+          expr: |
+            (
+              0.01 - 
+              (
+                sum(increase(receipts_processed_total{status!="success"}[30d]))
+                /
+                sum(increase(receipts_processed_total[30d]))
+              )
+            ) / 0.01
+
+    - name: receipt-vault.slo.ocr-processing
+      interval: 60s
+      rules:
+        # OCR processing latency SLI
+        - record: receipt_vault:slo_ocr_latency:success_rate5m
+          expr: |
+            (
+              sum(rate(ocr_processing_duration_seconds_bucket{le="15"}[5m]))
+              /
+              sum(rate(ocr_processing_duration_seconds_bucket{le="+Inf"}[5m]))
+            )
+
+        # OCR processing error budget
+        - record: receipt_vault:slo_ocr_latency:error_budget_remaining
+          expr: |
+            (
+              0.1 - 
+              (
+                1 - (
+                  sum(increase(ocr_processing_duration_seconds_bucket{le="15"}[30d]))
+                  /
+                  sum(increase(ocr_processing_duration_seconds_bucket{le="+Inf"}[30d]))
+                )
+              )
+            ) / 0.1
+
+    - name: receipt-vault.slo.database-availability
+      interval: 30s
+      rules:
+        # Database availability
+        - record: receipt_vault:slo_database_availability:up5m
+          expr: |
+            avg_over_time(up{job="postgres-exporter"}[5m])
+
+        # Database error budget
+        - record: receipt_vault:slo_database_availability:error_budget_remaining
+          expr: |
+            (
+              0.0005 - 
+              (1 - avg_over_time(up{job="postgres-exporter"}[30d]))
+            ) / 0.0005
+
+---
+# SLO Alerting Rules
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: receipt-vault-slo-alerts
+  namespace: monitoring
+  labels:
+    app: receipt-vault
+    prometheus: kube-prometheus
+    role: slo-alerts
+spec:
+  groups:
+    - name: receipt-vault.slo.burn-rate-alerts
+      interval: 30s
+      rules:
+        # Fast burn rate alert for API availability (2% error budget in 1 hour)
+        - alert: ReceiptVaultAPIAvailabilityFastBurn
+          expr: |
+            (
+              receipt_vault:slo_api_availability:rate5m > (14.4 * 0.001)
+              and
+              receipt_vault:slo_api_availability:rate5m > (14.4 * 0.001)
+            )
+          for: 2m
+          labels:
+            severity: critical
+            team: platform
+            slo: api-availability
+            burn_rate: fast
+          annotations:
+            summary: "API availability SLO fast burn rate"
+            description: "API error rate is consuming error budget at 14.4x rate"
+
+        # Slow burn rate alert for API availability (10% error budget in 6 hours)  
+        - alert: ReceiptVaultAPIAvailabilitySlowBurn
+          expr: |
+            (
+              receipt_vault:slo_api_availability:rate5m > (6 * 0.001)
+              and
+              receipt_vault:slo_api_availability:rate5m > (6 * 0.001)
+            )
+          for: 15m
+          labels:
+            severity: warning
+            team: platform
+            slo: api-availability
+            burn_rate: slow
+          annotations:
+            summary: "API availability SLO slow burn rate"
+            description: "API error rate is consuming error budget at 6x rate"
+
+        # Error budget exhaustion warning
+        - alert: ReceiptVaultAPIAvailabilityErrorBudgetLow
+          expr: |
+            receipt_vault:slo_api_availability:error_budget_remaining < 0.1
+          for: 5m
+          labels:
+            severity: warning
+            team: platform
+            slo: api-availability
+          annotations:
+            summary: "API availability error budget low"
+            description: "API availability error budget is {{ $value | humanizePercentage }} remaining"
+
+        # Latency SLO burn rate alerts
+        - alert: ReceiptVaultAPILatencyFastBurn
+          expr: |
+            (
+              (1 - receipt_vault:slo_api_latency:success_rate5m) > (14.4 * 0.05)
+            )
+          for: 2m
+          labels:
+            severity: critical
+            team: backend
+            slo: api-latency
+            burn_rate: fast
+          annotations:
+            summary: "API latency SLO fast burn rate"
+            description: "API latency SLI is consuming error budget at 14.4x rate"
+
+        - alert: ReceiptVaultAPILatencySlowBurn
+          expr: |
+            (
+              (1 - receipt_vault:slo_api_latency:success_rate5m) > (6 * 0.05)
+            )
+          for: 15m
+          labels:
+            severity: warning
+            team: backend
+            slo: api-latency
+            burn_rate: slow
+          annotations:
+            summary: "API latency SLO slow burn rate"
+            description: "API latency SLI is consuming error budget at 6x rate"
+
+        # Receipt processing SLO burn rate
+        - alert: ReceiptProcessingSLOFastBurn
+          expr: |
+            (
+              (1 - receipt_vault:slo_receipt_processing:success_rate5m) > (14.4 * 0.01)
+            )
+          for: 2m
+          labels:
+            severity: critical
+            team: backend
+            slo: receipt-processing
+            burn_rate: fast
+          annotations:
+            summary: "Receipt processing SLO fast burn rate"
+            description: "Receipt processing failure rate is consuming error budget at 14.4x rate"
+
+        # OCR processing latency SLO burn rate
+        - alert: OCRProcessingLatencySLOFastBurn
+          expr: |
+            (
+              (1 - receipt_vault:slo_ocr_latency:success_rate5m) > (14.4 * 0.1)
+            )
+          for: 2m
+          labels:
+            severity: warning
+            team: backend
+            slo: ocr-latency
+            burn_rate: fast
+          annotations:
+            summary: "OCR processing latency SLO fast burn rate"
+            description: "OCR processing latency is consuming error budget at 14.4x rate"
+
+---
+# SLO Dashboard Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: receipt-vault-slo-dashboard
+  namespace: monitoring
+data:
+  slo-dashboard.json: |
+    {
+      "dashboard": {
+        "title": "Receipt Vault Pro - SLO Dashboard",
+        "tags": ["slo", "sli", "receipt-vault"],
+        "panels": [
+          {
+            "title": "API Availability SLO",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "receipt_vault:slo_api_availability:success_rate5m * 100",
+                "legendFormat": "Current Availability %"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "thresholds": {
+                  "steps": [
+                    {"color": "red", "value": 99.8},
+                    {"color": "yellow", "value": 99.9},
+                    {"color": "green", "value": 99.95}
+                  ]
+                },
+                "unit": "percent",
+                "min": 99.5,
+                "max": 100
+              }
+            }
+          },
+          {
+            "title": "Error Budget Remaining",
+            "type": "gauge",
+            "targets": [
+              {
+                "expr": "receipt_vault:slo_api_availability:error_budget_remaining * 100",
+                "legendFormat": "Error Budget %"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "thresholds": {
+                  "steps": [
+                    {"color": "red", "value": 0},
+                    {"color": "yellow", "value": 25},
+                    {"color": "green", "value": 50}
+                  ]
+                },
+                "unit": "percent",
+                "min": 0,
+                "max": 100
+              }
+            }
+          },
+          {
+            "title": "SLO Compliance Over Time",
+            "type": "timeseries",
+            "targets": [
+              {
+                "expr": "receipt_vault:slo_api_availability:success_rate5m * 100",
+                "legendFormat": "API Availability"
+              },
+              {
+                "expr": "receipt_vault:slo_api_latency:success_rate5m * 100", 
+                "legendFormat": "API Latency"
+              },
+              {
+                "expr": "receipt_vault:slo_receipt_processing:success_rate5m * 100",
+                "legendFormat": "Receipt Processing"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "percent",
+                "min": 95,
+                "max": 100
+              }
+            }
+          }
+        ]
+      }
+    }

@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
-import { db } from '@/database/connection';
-import { storageService } from '@/services/storage';
-import { FileValidator } from '@/utils/file-validation';
+import { db } from '../database/connection';
+import { storageService } from './storage';
+import { FileValidator } from '../utils/file-validation';
 
 export interface CreateReceiptData {
   userId: string;

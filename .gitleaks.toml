@@ -1,0 +1,191 @@
+# GitLeaks Configuration for Receipt Vault Pro
+# Comprehensive secret detection with custom rules
+
+title = "Receipt Vault Pro Secret Detection"
+
+[allowlist]
+description = "Allowlist for Receipt Vault Pro"
+commits = []
+paths = [
+  # Test files and example data
+  ".*/test/.*",
+  ".*/tests/.*",
+  ".*\\.test\\.(js|ts)$",
+  ".*\\.spec\\.(js|ts)$",
+  ".*/example/.*",
+  ".*/examples/.*",
+  # Documentation
+  ".*\\.md$",
+  "docs/.*",
+  # Build artifacts
+  "node_modules/.*",
+  "dist/.*",
+  "build/.*",
+  ".dart_tool/.*",
+  "coverage/.*"
+]
+regexes = [
+  # Common false positives
+  "password_confirmation",
+  "old_password",
+  "new_password",
+  # Example/dummy values
+  "example\\.com",
+  "test@test\\.com",
+  "placeholder.*",
+  "dummy.*",
+  "fake.*",
+  # Template variables
+  "\\{\\{.*\\}\\}",
+  "\\$\\{.*\\}",
+  "%.*%"
+]
+
+# Custom rules specific to Receipt Vault Pro
+[[rules]]
+id = "receipt-vault-api-key"
+description = "Receipt Vault Pro API Key"
+regex = "rv_[a-zA-Z0-9]{32,64}"
+tags = ["api", "receipt-vault"]
+
+[[rules]]
+id = "workos-api-key"
+description = "WorkOS API Key"
+regex = "sk_live_[a-zA-Z0-9]{32,64}"
+tags = ["workos", "authentication"]
+
+[[rules]]
+id = "google-cloud-api-key"
+description = "Google Cloud API Key"
+regex = "AIza[0-9A-Za-z\\-_]{35}"
+tags = ["google", "gcp", "ocr"]
+
+[[rules]]
+id = "aws-access-key"
+description = "AWS Access Key"
+regex = "AKIA[0-9A-Z]{16}"
+tags = ["aws", "cloud"]
+
+[[rules]]
+id = "aws-secret-key"
+description = "AWS Secret Key"
+regex = "aws_secret_access_key\\s*=\\s*['\"][0-9a-zA-Z/+=]{40}['\"]"
+tags = ["aws", "cloud"]
+
+[[rules]]
+id = "jwt-secret"
+description = "JWT Secret"
+regex = "jwt[_-]?secret['\"]?\\s*[:=]\\s*['\"][a-zA-Z0-9\\-_+/=]{32,}['\"]"
+tags = ["jwt", "authentication"]
+
+[[rules]]
+id = "database-url"
+description = "Database Connection URL"
+regex = "(postgresql|mysql|mongodb)://[a-zA-Z0-9\\-_.]+:[a-zA-Z0-9\\-_.%]+@[a-zA-Z0-9\\-_.]+:[0-9]+/[a-zA-Z0-9\\-_.]+"
+tags = ["database", "connection"]
+
+[[rules]]
+id = "private-key"
+description = "Private Key"
+regex = "-----BEGIN (RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY-----"
+tags = ["private-key", "encryption"]
+
+[[rules]]
+id = "stripe-api-key"
+description = "Stripe API Key"
+regex = "sk_live_[0-9a-zA-Z]{24,}"
+tags = ["stripe", "payment"]
+
+[[rules]]
+id = "sendgrid-api-key"
+description = "SendGrid API Key"
+regex = "SG\\.[a-zA-Z0-9_\\-]{22}\\.[a-zA-Z0-9_\\-]{43}"
+tags = ["sendgrid", "email"]
+
+[[rules]]
+id = "twilio-api-key"
+description = "Twilio API Key"
+regex = "SK[a-f0-9]{32}"
+tags = ["twilio", "sms"]
+
+[[rules]]
+id = "slack-webhook"
+description = "Slack Webhook URL"
+regex = "https://hooks\\.slack\\.com/services/[A-Z0-9]+/[A-Z0-9]+/[a-zA-Z0-9]+"
+tags = ["slack", "webhook"]
+
+[[rules]]
+id = "generic-password"
+description = "Generic Password"
+regex = "password['\"]?\\s*[:=]\\s*['\"][^'\"\\s]{8,}['\"]"
+tags = ["password", "generic"]
+
+[[rules]]
+id = "docker-auth"
+description = "Docker Authentication"
+regex = "docker(hub)?[_-]?(password|token|auth)['\"]?\\s*[:=]\\s*['\"][^'\"\\s]+['\"]"
+tags = ["docker", "authentication"]
+
+[[rules]]
+id = "npm-token"
+description = "NPM Token"
+regex = "npm_[a-zA-Z0-9]{36}"
+tags = ["npm", "token"]
+
+[[rules]]
+id = "github-token"
+description = "GitHub Token"
+regex = "gh[pousr]_[A-Za-z0-9_]{36,251}"
+tags = ["github", "token"]
+
+[[rules]]
+id = "firebase-api-key"
+description = "Firebase API Key"
+regex = "firebase[_-]?api[_-]?key['\"]?\\s*[:=]\\s*['\"][a-zA-Z0-9\\-_]{39}['\"]"
+tags = ["firebase", "google"]
+
+[[rules]]
+id = "encryption-key"
+description = "Encryption Key"
+regex = "(encryption|cipher)[_-]?key['\"]?\\s*[:=]\\s*['\"][a-zA-Z0-9+/=]{32,}['\"]"
+tags = ["encryption", "key"]
+
+# High-sensitivity rules with additional validation
+[[rules]]
+id = "social-security-number"
+description = "Social Security Number"
+regex = "\\b\\d{3}-\\d{2}-\\d{4}\\b"
+tags = ["pii", "ssn"]
+
+[[rules]]
+id = "credit-card-number"
+description = "Credit Card Number"
+regex = "\\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|3[0-9]{13}|6(?:011|5[0-9]{2})[0-9]{12})\\b"
+tags = ["pii", "credit-card"]
+
+[[rules]]
+id = "phone-number"
+description = "Phone Number"
+regex = "\\b\\d{3}-\\d{3}-\\d{4}\\b"
+tags = ["pii", "phone"]
+
+# Environment-specific rules
+[[rules]]
+id = "env-file-secrets"
+description = "Environment File Secrets"
+regex = "^[A-Z_]+=['\"]?[a-zA-Z0-9\\-_+/=]{16,}['\"]?$"
+path = "\\.env.*"
+tags = ["environment", "config"]
+
+# Database-specific rules
+[[rules]]
+id = "mongodb-connection"
+description = "MongoDB Connection String"
+regex = "mongodb(\\+srv)?://[a-zA-Z0-9\\-_.%]+:[a-zA-Z0-9\\-_.%]+@[a-zA-Z0-9\\-_.]+/[a-zA-Z0-9\\-_.]+"
+tags = ["mongodb", "database"]
+
+[[rules]]
+id = "redis-url"
+description = "Redis Connection URL"
+regex = "redis://[a-zA-Z0-9\\-_.%]*:[a-zA-Z0-9\\-_.%]*@[a-zA-Z0-9\\-_.]+:[0-9]+"
+tags = ["redis", "cache"]
