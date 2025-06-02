@@ -82,7 +82,7 @@ export const listWebhooks = async (
     const webhooks = [];
     const total = 0;
     
-    reply.send({
+    return reply.send({
       success: true,
       data: {
         webhooks,
@@ -139,7 +139,7 @@ export const createWebhook = async (
     
     logger.info('Webhook created:', { webhook });
     
-    reply.status(201).send({
+    return reply.status(201).send({
       success: true,
       data: webhook
     });
@@ -178,7 +178,7 @@ export const getWebhook = async (
       });
     }
     
-    reply.send({
+    return reply.send({
       success: true,
       data: webhook
     });
@@ -229,7 +229,7 @@ export const updateWebhook = async (
     
     logger.info('Webhook updated:', { id, updates });
     
-    reply.send({
+    return reply.send({
       success: true,
       data: updatedWebhook
     });
@@ -261,7 +261,7 @@ export const deleteWebhook = async (
     // Mock deletion - would delete from database
     logger.info('Webhook deleted:', { id, userId: (user as any).id });
     
-    reply.status(204).send();
+    return reply.status(204).send();
   } catch (error) {
     logger.error('Error deleting webhook:', error);
     reply.status(500).send({
@@ -291,7 +291,7 @@ export const testWebhook = async (
     // Mock webhook test - would send test payload to webhook URL
     logger.info('Testing webhook:', { id, payload });
     
-    reply.send({
+    return reply.send({
       success: true,
       data: {
         status: 'delivered',
@@ -333,7 +333,7 @@ export const getWebhookDeliveries = async (
     const deliveries = [];
     const total = 0;
     
-    reply.send({
+    return reply.send({
       success: true,
       data: {
         deliveries,
@@ -388,7 +388,7 @@ export const getDeliveryDetails = async (
       deliveredAt: new Date().toISOString()
     };
     
-    reply.send({
+    return reply.send({
       success: true,
       data: delivery
     });
@@ -418,7 +418,7 @@ export const retryDelivery = async (
     
     logger.info('Retrying webhook delivery:', { webhookId, deliveryId });
     
-    reply.send({
+    return reply.send({
       success: true,
       message: 'Delivery retry initiated'
     });
@@ -459,7 +459,7 @@ export const getWebhookStats = async (
       successRate: 0
     };
     
-    reply.send({
+    return reply.send({
       success: true,
       data: stats
     });
@@ -507,7 +507,7 @@ export const getAvailableEvents = async (
       }
     ];
     
-    reply.send({
+    return reply.send({
       success: true,
       data: events
     });
@@ -532,7 +532,7 @@ export const verifySignature = async (
     // Mock signature verification
     const isValid = signature.length > 0;
     
-    reply.send({
+    return reply.send({
       success: true,
       data: {
         valid: isValid,

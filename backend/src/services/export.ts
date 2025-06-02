@@ -249,20 +249,19 @@ class ExportService {
       await this.updateJobProgress(jobId, 75);
 
       // Upload to MinIO
-      const fileKey = `exports/${job.user_id}/${fileName}`;
       const fileBuffer = fs.readFileSync(filePath);
       
-      await storageService.uploadFile(fileKey, fileBuffer, {
-        originalname: fileName,
-        mimetype: this.getMimeType(options.format),
-        size: fileBuffer.length
-      });
+      const uploadResult = await storageService.uploadFile(
+        fileBuffer,
+        job.user_id,
+        fileName
+      );
 
       // Clean up local file
       fs.unlinkSync(filePath);
 
       // Generate signed URL (valid for 7 days)
-      const fileUrl = await storageService.getSignedUrl(fileKey, 7 * 24 * 3600);
+      const fileUrl = await storageService.generateSignedUrl(uploadResult.filePath, 7 * 24 * 3600);
 
       await this.updateJobStatus(jobId, 'completed', 100, {
         fileName,
@@ -583,9 +582,8 @@ class ExportService {
     const filePath = path.join('/tmp', fileName);
 
     const workbook = new ExcelJS.Workbook();
-    workbook.properties.title = 'Receipt Export';
-    workbook.properties.creator = 'Receipt Vault';
-    workbook.properties.created = new Date();
+    workbook.creator = 'Receipt Vault';
+    workbook.created = new Date();
 
     // Summary sheet
     const summarySheet = workbook.addWorksheet('Summary');
@@ -688,7 +686,8 @@ class ExportService {
       catHeaderRow.font = { bold: true };
 
       Object.entries(categoryBreakdown).forEach(([category, data]) => {
-        categorySheet.addRow([category, data.count, data.total]);
+        const typedData = data as { count: number; total: number };
+        categorySheet.addRow([category, typedData.count, typedData.total]);
       });
 
       categorySheet.getColumn('A').width = 20;

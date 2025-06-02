@@ -220,3 +220,13 @@ export const logAction = async (params: {
     user_agent: userAgent || request?.headers?.['user-agent']
   });
 };
+
+// Export service object for controllers
+export const auditService = {
+  createAuditLog,
+  getAuditLogs,
+  getAuditLogById,
+  deleteOldAuditLogs,
+  logUserAction,
+  logAction
+};

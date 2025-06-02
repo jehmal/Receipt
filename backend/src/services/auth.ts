@@ -366,8 +366,8 @@ class AuthService {
     const payload = jwtService.decodeTokenWithoutVerification(token);
     if (!payload) return;
 
-    const blacklistKey = `blacklist:${payload.jti || payload.sessionId}`;
-    const ttl = payload.exp - Math.floor(Date.now() / 1000);
+    const blacklistKey = `blacklist:${(payload as any).jti || (payload as any).sessionId}`;
+    const ttl = payload.exp! - Math.floor(Date.now() / 1000);
     
     if (ttl > 0) {
       await redisClient.setex(blacklistKey, ttl, '1');
@@ -378,7 +378,7 @@ class AuthService {
     const payload = jwtService.decodeTokenWithoutVerification(token);
     if (!payload) return true;
 
-    const blacklistKey = `blacklist:${payload.jti || payload.sessionId}`;
+    const blacklistKey = `blacklist:${(payload as any).jti || (payload as any).sessionId}`;
     const result = await redisClient.get(blacklistKey);
     return result === '1';
   }

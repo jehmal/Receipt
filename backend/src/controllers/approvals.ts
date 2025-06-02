@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import * as approvalsService from '@/services/approvals';
+import { approvalsService } from '@/services/approvals';
 import { notificationService } from '@/services/notifications';
 import * as auditService from '@/services/audit';
 import { logger } from '@/utils/logger';

@@ -86,9 +86,9 @@ const receiptRoutes: FastifyPluginAsync = async (fastify) => {
       
       // Get additional fields from the multipart data
       const fields = data.fields;
-      const category = fields?.category?.value as string;
-      const description = fields?.description?.value as string;
-      const tags = fields?.tags?.value ? JSON.parse(fields.tags.value as string) : undefined;
+      const category = (fields?.category as any)?.value as string;
+      const description = (fields?.description as any)?.value as string;
+      const tags = (fields?.tags as any)?.value ? JSON.parse((fields.tags as any).value as string) : undefined;
 
       const uploadData = {
         userId: user.id,
@@ -102,7 +102,7 @@ const receiptRoutes: FastifyPluginAsync = async (fastify) => {
 
       const receipt = await receiptService.uploadReceipt(uploadData);
 
-      reply.code(201).send({
+      return reply.code(201).send({
         success: true,
         message: 'Receipt uploaded successfully',
         data: receipt
@@ -142,7 +142,7 @@ const receiptRoutes: FastifyPluginAsync = async (fastify) => {
         });
       }
 
-      reply.send({
+      return reply.send({
         success: true,
         data: receipt
       });
@@ -198,7 +198,7 @@ const receiptRoutes: FastifyPluginAsync = async (fastify) => {
         });
       }
 
-      reply.send({
+      return reply.send({
         success: true,
         message: 'Receipt updated successfully',
         data: receipt
@@ -237,7 +237,7 @@ const receiptRoutes: FastifyPluginAsync = async (fastify) => {
         });
       }
 
-      reply.send({
+      return reply.send({
         success: true,
         message: 'Receipt deleted successfully'
       });
@@ -368,7 +368,7 @@ const receiptRoutes: FastifyPluginAsync = async (fastify) => {
         });
       }
 
-      reply.send({
+      return reply.send({
         success: true,
         data: job
       });

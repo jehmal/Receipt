@@ -2,6 +2,15 @@ import { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
 import { authService, jwtService } from '@/services/auth';
 
+export interface AuthenticatedUser {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  companyId?: string;
+}
+
 declare module 'fastify' {
   interface FastifyInstance {
     authenticate: (request: FastifyRequest, reply: any) => Promise<void>;
@@ -10,14 +19,7 @@ declare module 'fastify' {
   }
   
   interface FastifyRequest {
-    user?: {
-      id: string;
-      email: string;
-      firstName: string;
-      lastName: string;
-      role: string;
-      companyId?: string;
-    };
+    user?: AuthenticatedUser;
     sessionId?: string;
     deviceId?: string;
   }

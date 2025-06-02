@@ -87,6 +87,39 @@ export const notificationService = {
     });
     
     // Mock notification - would send emails/push notifications in real implementation
+  },
+
+  async send2FASetupConfirmation(userId: string, method: string): Promise<void> {
+    logger.info('Sending 2FA setup confirmation:', {
+      userId,
+      method
+    });
+    
+    // Mock notification - would send confirmation email/SMS in real implementation
+  },
+
+  async sendSecurityAlert(params: {
+    userId: string;
+    alertType: string;
+    severity: string;
+    title: string;
+    message: string;
+    ipAddress?: string;
+    userAgent?: string;
+  }): Promise<void> {
+    const { userId, alertType, severity, title, message, ipAddress, userAgent } = params;
+    
+    logger.info('Sending security alert:', {
+      userId,
+      alertType,
+      severity,
+      title,
+      message,
+      ipAddress,
+      userAgent
+    });
+    
+    // Mock notification - would send security alert email/push notification in real implementation
   }
 };
 
