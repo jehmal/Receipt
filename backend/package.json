@@ -44,7 +44,7 @@
     "dotenv": "^16.4.5",
     "elasticsearch": "^16.7.3",
     "exceljs": "^4.4.0",
-    "fastify": "^4.28.1",
+    "fastify": "^5.3.3",
     "file-type": "^16.5.4",
     "ioredis": "^5.3.2",
     "joi": "^17.9.2",
