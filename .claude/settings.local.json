@@ -75,7 +75,15 @@
       "WebFetch(domain:docs.anthropic.com)",
       "Bash(npx tsc:*)",
       "Bash(claude config set mcp-config /home/jehma/.claude/mcp-config.json)",
-      "Bash(claude mcp:*)"
+      "Bash(claude mcp:*)",
+      "Bash(sed:*)",
+      "Bash(flutter config:*)",
+      "Bash(flutter create:*)",
+      "Bash(node:*)",
+      "Bash(flutter pub:*)",
+      "Bash(/home/jehma/.npm-global/lib/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/x64-linux/rg \"TODO|FIXME|BUG|HACK|XXX|DEPRECATED\" --type dart)",
+      "Bash(git reset:*)",
+      "Bash(git restore:*)"
     ],
     "deny": []
   }

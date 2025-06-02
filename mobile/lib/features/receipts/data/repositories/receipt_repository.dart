@@ -187,8 +187,12 @@ class ReceiptRepositoryImpl implements ReceiptRepository {
         type: ApiExceptionType.notFound,
       ));
     } catch (e) {
-      if (e is ApiException && e.isNetworkError && localReceipt != null) {
-        return Result.success(localReceipt);
+      if (e is ApiException && e.isNetworkError) {
+        // Try to get from local storage first
+        final localReceipt = LocalStorage.getReceipt(id);
+        if (localReceipt != null) {
+          return Result.success(localReceipt);
+        }
       }
 
       return Result.failure(e is ApiException ? e : ApiException(
@@ -383,7 +387,18 @@ class ReceiptRepositoryImpl implements ReceiptRepository {
           );
 
           await LocalStorage.saveReceipt(updatedReceipt);
-          await _queueForSync('update', id, updateData);
+          
+          // Recreate updateData for sync queue
+          final updateDataForSync = <String, dynamic>{};
+          if (category != null) updateDataForSync['category'] = category;
+          if (description != null) updateDataForSync['description'] = description;
+          if (tags != null) updateDataForSync['tags'] = tags;
+          if (vendorName != null) updateDataForSync['vendorName'] = vendorName;
+          if (totalAmount != null) updateDataForSync['totalAmount'] = totalAmount;
+          if (currency != null) updateDataForSync['currency'] = currency;
+          if (receiptDate != null) updateDataForSync['receiptDate'] = receiptDate.toIso8601String();
+          
+          await _queueForSync('update', id, updateDataForSync);
 
           return Result.success(updatedReceipt);
         }

@@ -73,7 +73,7 @@ class _ReceiptsScreenState extends ConsumerState<ReceiptsScreen> {
                   return NoReceiptsEmptyState(
                     onAddReceipt: () {
                       // Navigate to camera tab
-                      DefaultTabController.of(context)?.animateTo(1);
+                      DefaultTabController.of(context).animateTo(1);
                     },
                   );
                 }

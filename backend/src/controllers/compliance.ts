@@ -28,32 +28,22 @@ export const complianceController = {
       const user = request.user;
       const { jurisdiction, startDate, endDate, format = 'pdf', includeAttachments = false } = request.query;
 
-      const report = await complianceService.generateTaxComplianceReport({
-        companyId: (user as any).companyId,
-        jurisdiction,
-        startDate: new Date(startDate),
-        endDate: new Date(endDate),
-        format,
-        includeAttachments
-      });
+      const report = await complianceService.generateTaxComplianceReport(
+        (user as any).companyId,
+        new Date(startDate),
+        new Date(endDate)
+      );
 
       // Log report generation
       await auditService.logAction({
         userId: (user as any).id,
         action: 'tax_compliance_report_generated',
         resourceType: 'compliance_report',
-        resourceId: report.id,
+        resourceId: report.companyId,
         details: { jurisdiction, startDate, endDate, format },
         ipAddress: request.ip,
         userAgent: request.headers['user-agent']
       });
-
-      if (format === 'pdf') {
-        return reply
-          .header('Content-Type', 'application/pdf')
-          .header('Content-Disposition', `attachment; filename="tax-compliance-${jurisdiction}-${startDate}-${endDate}.pdf"`)
-          .send(report.data);
-      }
 
       return reply.send({
         success: true,
@@ -76,21 +66,23 @@ export const complianceController = {
       const user = request.user;
       const { startDate, endDate, eventTypes, userIds, format = 'csv' } = request.query;
 
-      const export_ = await complianceService.exportAuditLog({
-        companyId: (user as any).companyId,
-        startDate: new Date(startDate),
-        endDate: new Date(endDate),
-        eventTypes: eventTypes ? eventTypes.split(',') : undefined,
-        userIds: userIds ? userIds.split(',') : undefined,
-        format
-      });
+      const export_ = await complianceService.exportAuditLog(
+        (user as any).companyId,
+        {
+          startDate: new Date(startDate),
+          endDate: new Date(endDate),
+          eventTypes: eventTypes ? eventTypes.split(',') : undefined,
+          userIds: userIds ? userIds.split(',') : undefined,
+          format
+        }
+      );
 
       // Log audit export
       await auditService.logAction({
         userId: (user as any).id,
         action: 'audit_log_exported',
         resourceType: 'audit_log',
-        resourceId: export_.id,
+        resourceId: (user as any).companyId,
         details: { startDate, endDate, eventTypes, userIds, format },
         ipAddress: request.ip,
         userAgent: request.headers['user-agent']
@@ -102,7 +94,7 @@ export const complianceController = {
       return reply
         .header('Content-Type', contentType)
         .header('Content-Disposition', `attachment; filename="audit-log-${startDate}-${endDate}.${fileExtension}"`)
-        .send(export_.data);
+        .send(export_);
     } catch (error) {
       logger.error('Error exporting audit log:', error);
       return reply.status(500).send({

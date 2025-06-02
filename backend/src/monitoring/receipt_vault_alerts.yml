@@ -1,0 +1,182 @@
+groups:
+  - name: receipt_vault_critical_alerts
+    rules:
+      # Application availability
+      - alert: ReceiptVaultDown
+        expr: up{job="receipt-vault-pro"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Receipt Vault Pro application is down"
+          description: "Receipt Vault Pro has been down for more than 1 minute"
+
+      # High error rate
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status_code!~"2.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is above 5% for more than 2 minutes"
+
+      # Database connection issues
+      - alert: DatabaseConnectionHigh
+        expr: database_connections_active > 80
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High database connection usage"
+          description: "Database connections are above 80 for more than 2 minutes"
+
+  - name: receipt_vault_performance_alerts
+    rules:
+      # Slow response times
+      - alert: SlowResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow response times detected"
+          description: "95th percentile response time is above 2 seconds"
+
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: memory_usage_bytes{type="heapUsed"} > 500 * 1024 * 1024
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is above 500MB for more than 5 minutes"
+
+      # High CPU usage
+      - alert: HighCPUUsage
+        expr: rate(receipt_vault_process_cpu_user_seconds_total[5m]) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is above 80% for more than 5 minutes"
+
+      # Event loop lag
+      - alert: HighEventLoopLag
+        expr: receipt_vault_nodejs_eventloop_lag_seconds > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High event loop lag"
+          description: "Event loop lag is above 100ms for more than 2 minutes"
+
+  - name: receipt_vault_business_alerts
+    rules:
+      # Receipt processing failures
+      - alert: ReceiptProcessingFailureHigh
+        expr: rate(receipt_processing_total{status="error"}[10m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High receipt processing failure rate"
+          description: "Receipt processing failure rate is above 10% for the last 10 minutes"
+
+      # OCR processing slow
+      - alert: OCRProcessingSlow
+        expr: histogram_quantile(0.95, rate(ocr_processing_duration_seconds_bucket[5m])) > 30
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "OCR processing is slow"
+          description: "95th percentile OCR processing time is above 30 seconds"
+
+      # Low receipt upload rate (business hours only)
+      - alert: LowReceiptUploadRate
+        expr: rate(receipt_processing_total{operation="upload"}[1h]) < 0.01 and hour() >= 9 and hour() <= 17
+        for: 30m
+        labels:
+          severity: info
+        annotations:
+          summary: "Low receipt upload rate during business hours"
+          description: "Receipt upload rate is unusually low during business hours"
+
+  - name: receipt_vault_infrastructure_alerts
+    rules:
+      # Disk space
+      - alert: LowDiskSpace
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) < 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Low disk space"
+          description: "Disk space is below 10%"
+
+      # System load
+      - alert: HighSystemLoad
+        expr: node_load1 > 4
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High system load"
+          description: "System load average is above 4 for more than 5 minutes"
+
+      # Container restarts
+      - alert: ContainerRestarting
+        expr: increase(container_last_seen[1m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container restarting"
+          description: "Container {{ $labels.container_label_com_docker_compose_service }} has restarted"
+
+  - name: receipt_vault_security_alerts
+    rules:
+      # Unusual authentication failures
+      - alert: HighAuthFailureRate
+        expr: rate(http_requests_total{route="/api/auth/login",status_code="401"}[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High authentication failure rate"
+          description: "Authentication failure rate is above 10% for more than 2 minutes"
+
+      # Suspicious request patterns
+      - alert: SuspiciousRequestPattern
+        expr: rate(http_requests_total{status_code="404"}[5m]) > 1
+        for: 5m
+        labels:
+          severity: info
+        annotations:
+          summary: "High 404 error rate"
+          description: "404 error rate is above 1 request/second - possible scanning activity"
+
+  - name: receipt_vault_data_quality_alerts
+    rules:
+      # OCR accuracy drop
+      - alert: OCRAccuracyDrop
+        expr: rate(receipt_processing_total{operation="ocr",status="success"}[1h]) / rate(receipt_processing_total{operation="ocr"}[1h]) < 0.9
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "OCR accuracy has dropped"
+          description: "OCR success rate has dropped below 90% for the last hour"
+
+      # Receipt categorization issues
+      - alert: CategorizationFailureHigh
+        expr: rate(receipt_processing_total{operation="categorization",status="error"}[1h]) > 0.05
+        for: 15m
+        labels:
+          severity: info
+        annotations:
+          summary: "High categorization failure rate"
+          description: "Receipt categorization failure rate is above 5% for the last hour" 

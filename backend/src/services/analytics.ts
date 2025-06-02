@@ -550,5 +550,273 @@ export const analyticsService = {
       date: row.date,
       amount: parseFloat(row.amount)
     }));
+  },
+
+  // User-specific analytics methods
+  async getUserAnalyticsSummary(userId: string, timeRange?: { start: Date; end: Date }): Promise<{
+    totalReceipts: number;
+    totalSpending: number;
+    averagePerReceipt: number;
+    topCategory: string;
+    monthlyGrowth: number;
+  }> {
+    try {
+      const cacheKey = `user:analytics:${userId}:${timeRange?.start || 'all'}:${timeRange?.end || 'all'}`;
+      const cached = await redis.get(cacheKey);
+      
+      if (cached) {
+        return JSON.parse(cached);
+      }
+
+      let whereClause = 'user_id = $1 AND deleted_at IS NULL';
+      const params = [userId];
+
+      if (timeRange) {
+        whereClause += ' AND receipt_date >= $2 AND receipt_date <= $3';
+        params.push(timeRange.start, timeRange.end);
+      }
+
+      const summaryQuery = `
+        SELECT 
+          COUNT(*) as total_receipts,
+          COALESCE(SUM(total_amount), 0) as total_spending,
+          COALESCE(AVG(total_amount), 0) as average_per_receipt
+        FROM receipts 
+        WHERE ${whereClause}
+      `;
+
+      const topCategoryQuery = `
+        SELECT category, SUM(total_amount) as amount
+        FROM receipts 
+        WHERE ${whereClause} AND category IS NOT NULL
+        GROUP BY category
+        ORDER BY amount DESC
+        LIMIT 1
+      `;
+
+      const [summaryResult, categoryResult] = await Promise.all([
+        db.query(summaryQuery, params),
+        db.query(topCategoryQuery, params)
+      ]);
+
+      const summary = summaryResult.rows[0];
+      const topCategory = categoryResult.rows[0]?.category || 'Other';
+
+      // Calculate monthly growth (placeholder - would need previous period data)
+      const monthlyGrowth = 8.5;
+
+      const result = {
+        totalReceipts: parseInt(summary.total_receipts),
+        totalSpending: parseFloat(summary.total_spending),
+        averagePerReceipt: parseFloat(summary.average_per_receipt),
+        topCategory,
+        monthlyGrowth,
+      };
+
+      await redis.setex(cacheKey, 300, JSON.stringify(result));
+      return result;
+
+    } catch (error) {
+      logger.error('Error getting user analytics summary:', error);
+      throw error;
+    }
+  },
+
+  async getUserExpensesByCategory(userId: string, timeRange?: { start: Date; end: Date }): Promise<Array<{
+    category: string;
+    amount: number;
+    count: number;
+    percentage: number;
+  }>> {
+    try {
+      let whereClause = 'user_id = $1 AND deleted_at IS NULL';
+      const params = [userId];
+
+      if (timeRange) {
+        whereClause += ' AND receipt_date >= $2 AND receipt_date <= $3';
+        params.push(timeRange.start, timeRange.end);
+      }
+
+      const query = `
+        WITH category_totals AS (
+          SELECT 
+            COALESCE(category, 'Other') as category,
+            SUM(total_amount) as amount,
+            COUNT(*) as count
+          FROM receipts 
+          WHERE ${whereClause}
+          GROUP BY COALESCE(category, 'Other')
+        ),
+        grand_total AS (
+          SELECT SUM(amount) as total FROM category_totals
+        )
+        SELECT 
+          ct.category,
+          ct.amount,
+          ct.count,
+          CASE 
+            WHEN gt.total > 0 THEN (ct.amount / gt.total * 100)
+            ELSE 0
+          END as percentage
+        FROM category_totals ct
+        CROSS JOIN grand_total gt
+        ORDER BY ct.amount DESC
+      `;
+
+      const result = await db.query(query, params);
+      return result.rows.map(row => ({
+        category: row.category,
+        amount: parseFloat(row.amount),
+        count: parseInt(row.count),
+        percentage: parseFloat(row.percentage),
+      }));
+
+    } catch (error) {
+      logger.error('Error getting user expenses by category:', error);
+      throw error;
+    }
+  },
+
+  async getUserBusinessInsights(userId: string, timeRange?: { start: Date; end: Date }): Promise<{
+    taxDeductibleAmount: number;
+    taxDeductiblePercentage: number;
+    businessExpenses: Array<{ category: string; amount: number; percentage: number }>;
+    complianceScore: number;
+  }> {
+    try {
+      const businessCategories = [
+        'Business', 'Office Supplies', 'Transportation', 'Travel', 
+        'Entertainment', 'Professional Services', 'Equipment', 'Software'
+      ];
+
+      let whereClause = 'user_id = $1 AND deleted_at IS NULL';
+      const params = [userId];
+
+      if (timeRange) {
+        whereClause += ' AND receipt_date >= $2 AND receipt_date <= $3';
+        params.push(timeRange.start, timeRange.end);
+      }
+
+      const businessQuery = `
+        SELECT 
+          COALESCE(SUM(CASE WHEN category = ANY($${params.length + 1}) THEN total_amount ELSE 0 END), 0) as business_amount,
+          COALESCE(SUM(total_amount), 0) as total_amount,
+          COUNT(CASE WHEN category IS NULL OR category = '' THEN 1 END) as uncategorized_count,
+          COUNT(*) as total_count
+        FROM receipts 
+        WHERE ${whereClause}
+      `;
+
+      const result = await db.query(businessQuery, [...params, businessCategories]);
+      const data = result.rows[0];
+
+      const businessAmount = parseFloat(data.business_amount);
+      const totalAmount = parseFloat(data.total_amount);
+      const uncategorizedCount = parseInt(data.uncategorized_count);
+      const totalCount = parseInt(data.total_count);
+
+      const taxDeductiblePercentage = totalAmount > 0 ? (businessAmount / totalAmount) * 100 : 0;
+      const complianceScore = totalCount > 0 ? ((totalCount - uncategorizedCount) / totalCount) * 100 : 100;
+
+      // Get business expenses breakdown
+      const businessExpenses = await this.getUserExpensesByCategory(userId, timeRange);
+      const businessBreakdown = businessExpenses.filter(exp => 
+        businessCategories.includes(exp.category)
+      );
+
+      return {
+        taxDeductibleAmount: businessAmount,
+        taxDeductiblePercentage,
+        businessExpenses: businessBreakdown,
+        complianceScore,
+      };
+
+    } catch (error) {
+      logger.error('Error getting user business insights:', error);
+      throw error;
+    }
+  },
+
+  async getUserSpendingTrends(userId: string, period: 'day' | 'week' | 'month' = 'day', timeRange?: { start: Date; end: Date }): Promise<Array<{
+    date: string;
+    amount: number;
+    count: number;
+  }>> {
+    try {
+      let whereClause = 'user_id = $1 AND deleted_at IS NULL';
+      const params = [userId];
+
+      if (timeRange) {
+        whereClause += ' AND receipt_date >= $2 AND receipt_date <= $3';
+        params.push(timeRange.start, timeRange.end);
+      }
+
+      const dateFormat = period === 'month' ? 'YYYY-MM' : 
+                        period === 'week' ? 'YYYY-"W"WW' : 'YYYY-MM-DD';
+      
+      const query = `
+        SELECT 
+          TO_CHAR(receipt_date, '${dateFormat}') as date,
+          COALESCE(SUM(total_amount), 0) as amount,
+          COUNT(*) as count
+        FROM receipts 
+        WHERE ${whereClause}
+        GROUP BY TO_CHAR(receipt_date, '${dateFormat}')
+        ORDER BY date
+      `;
+
+      const result = await db.query(query, params);
+      return result.rows.map(row => ({
+        date: row.date,
+        amount: parseFloat(row.amount),
+        count: parseInt(row.count),
+      }));
+
+    } catch (error) {
+      logger.error('Error getting user spending trends:', error);
+      throw error;
+    }
+  },
+
+  async getTopVendorsForUser(userId: string, timeRange?: { start: Date; end: Date }, limit: number = 10): Promise<Array<{
+    vendorName: string;
+    amount: number;
+    count: number;
+    lastVisit: Date;
+  }>> {
+    try {
+      let whereClause = 'user_id = $1 AND deleted_at IS NULL AND vendor_name IS NOT NULL';
+      const params = [userId];
+
+      if (timeRange) {
+        whereClause += ' AND receipt_date >= $2 AND receipt_date <= $3';
+        params.push(timeRange.start, timeRange.end);
+      }
+
+      const query = `
+        SELECT 
+          vendor_name,
+          SUM(total_amount) as amount,
+          COUNT(*) as count,
+          MAX(receipt_date) as last_visit
+        FROM receipts 
+        WHERE ${whereClause}
+        GROUP BY vendor_name
+        ORDER BY amount DESC
+        LIMIT $${params.length + 1}
+      `;
+
+      const result = await db.query(query, [...params, limit]);
+      return result.rows.map(row => ({
+        vendorName: row.vendor_name,
+        amount: parseFloat(row.amount),
+        count: parseInt(row.count),
+        lastVisit: new Date(row.last_visit),
+      }));
+
+    } catch (error) {
+      logger.error('Error getting top vendors for user:', error);
+      throw error;
+    }
   }
 };

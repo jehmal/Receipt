@@ -32,9 +32,9 @@ class ReceiptCard extends StatelessWidget {
                 child: SizedBox(
                   width: 60,
                   height: 80,
-                  child: File(receipt.imagePath).existsSync()
+                  child: receipt.imagePath != null && File(receipt.imagePath!).existsSync()
                       ? Image.file(
-                          File(receipt.imagePath),
+                          File(receipt.imagePath!),
                           fit: BoxFit.cover,
                         )
                       : Container(
@@ -156,7 +156,9 @@ class ReceiptCard extends StatelessWidget {
     );
   }
 
-  String _formatDate(DateTime date) {
+  String _formatDate(DateTime? date) {
+    // Handle null date with fallback
+    date ??= receipt.createdAt;
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));

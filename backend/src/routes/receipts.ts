@@ -53,12 +53,12 @@ const receiptRoutes: FastifyPluginAsync = async (fastify) => {
 
       const result = await receiptService.getReceipts(filter, pagination);
 
-      reply.send({
+      return reply.send({
         success: true,
         data: result
       });
     } catch (error: any) {
-      reply.code(500).send({
+      return reply.code(500).send({
         success: false,
         message: error.message || 'Failed to get receipts'
       });
@@ -109,7 +109,7 @@ const receiptRoutes: FastifyPluginAsync = async (fastify) => {
       });
     } catch (error: any) {
       console.error('Receipt upload error:', error);
-      reply.code(400).send({
+      return reply.code(400).send({
         success: false,
         message: error.message || 'Failed to upload receipt'
       });
@@ -147,7 +147,7 @@ const receiptRoutes: FastifyPluginAsync = async (fastify) => {
         data: receipt
       });
     } catch (error: any) {
-      reply.code(500).send({
+      return reply.code(500).send({
         success: false,
         message: error.message || 'Failed to get receipt'
       });
@@ -204,7 +204,7 @@ const receiptRoutes: FastifyPluginAsync = async (fastify) => {
         data: receipt
       });
     } catch (error: any) {
-      reply.code(400).send({
+      return reply.code(400).send({
         success: false,
         message: error.message || 'Failed to update receipt'
       });
@@ -242,7 +242,7 @@ const receiptRoutes: FastifyPluginAsync = async (fastify) => {
         message: 'Receipt deleted successfully'
       });
     } catch (error: any) {
-      reply.code(500).send({
+      return reply.code(500).send({
         success: false,
         message: error.message || 'Failed to delete receipt'
       });
@@ -321,7 +321,7 @@ const receiptRoutes: FastifyPluginAsync = async (fastify) => {
       // Create export job
       const job = await exportService.createExportJob(user.id, filters, options);
 
-      reply.code(202).send({
+      return reply.code(202).send({
         success: true,
         message: 'Export job created successfully',
         data: {
@@ -334,7 +334,7 @@ const receiptRoutes: FastifyPluginAsync = async (fastify) => {
         }
       });
     } catch (error: any) {
-      reply.code(400).send({
+      return reply.code(400).send({
         success: false,
         message: error.message || 'Failed to create export job'
       });
@@ -373,7 +373,7 @@ const receiptRoutes: FastifyPluginAsync = async (fastify) => {
         data: job
       });
     } catch (error: any) {
-      reply.code(500).send({
+      return reply.code(500).send({
         success: false,
         message: error.message || 'Failed to get export job status'
       });
@@ -399,12 +399,12 @@ const receiptRoutes: FastifyPluginAsync = async (fastify) => {
       const { exportService } = await import('@/services/export');
       const jobs = await exportService.getUserExportJobs(user.id, limit);
 
-      reply.send({
+      return reply.send({
         success: true,
         data: jobs
       });
     } catch (error: any) {
-      reply.code(500).send({
+      return reply.code(500).send({
         success: false,
         message: error.message || 'Failed to get export jobs'
       });
@@ -426,7 +426,7 @@ const receiptRoutes: FastifyPluginAsync = async (fastify) => {
     },
   }, async (request, reply) => {
     // TODO: Implement receipt analytics
-    reply.status(501).send({ message: 'Receipt analytics endpoint not implemented yet' });
+    return reply.status(501).send({ message: 'Receipt analytics endpoint not implemented yet' });
   });
 };
 

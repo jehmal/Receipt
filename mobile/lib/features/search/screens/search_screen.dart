@@ -4,9 +4,10 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 
 import '../providers/search_provider.dart';
 import '../widgets/search_bar_widget.dart';
-import '../widgets/filter_chips_widget.dart';
-import '../widgets/search_result_card.dart';
+// import '../widgets/filter_chips_widget.dart';
+// import '../widgets/search_result_card.dart';
 import '../../receipts/widgets/receipt_card.dart';
+import '../../../shared/models/receipt.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
@@ -123,7 +124,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   Widget _buildQuickFilterChip(String label, QuickFilter filter) {
     final searchState = ref.watch(searchProvider);
-    final isSelected = searchState is _SuccessState && searchState.quickFilter == filter;
+    final isSelected = searchState is SearchSuccessState && searchState.quickFilter == filter;
 
     return Container(
       margin: const EdgeInsets.only(right: 8),
@@ -312,10 +313,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   Widget _buildSearchResults(SearchState state) {
     return switch (state) {
-      _InitialState() => _buildEmptyState(),
-      _LoadingState() => _buildLoadingState(),
-      _SuccessState(results: final results) => _buildResultsList(results),
-      _ErrorState(message: final message) => _buildErrorState(message),
+      SearchInitialState() => _buildEmptyState(),
+      SearchLoadingState() => _buildLoadingState(),
+      SearchSuccessState(results: final results) => _buildResultsList(results),
+      SearchErrorState(message: final message) => _buildErrorState(message),
     };
   }
 
@@ -395,7 +396,21 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             final receipt = results[index];
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
-              child: ReceiptCard(receipt: receipt),
+              child: ReceiptCard(
+                receipt: receipt,
+                onTap: () {
+                  // Navigate to receipt details
+                  Navigator.pushNamed(
+                    context,
+                    '/receipt-details',
+                    arguments: receipt,
+                  );
+                },
+                onDelete: () {
+                  // Handle receipt deletion
+                  _showDeleteConfirmation(receipt);
+                },
+              ),
             );
           },
           childCount: results.length,
@@ -449,5 +464,31 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   void _performSemanticSearch(String query) {
     _searchFocus.unfocus();
     ref.read(searchProvider.notifier).semanticSearch(query);
+  }
+
+  void _showDeleteConfirmation(Receipt receipt) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Receipt'),
+        content: Text('Are you sure you want to delete the receipt from ${receipt.vendor ?? 'Unknown Vendor'}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // TODO: Implement receipt deletion
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Receipt deletion not implemented yet')),
+              );
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -15,8 +15,15 @@ import { authPlugin } from '@/middleware/auth';
 // Route imports  
 import authRoutes from '@/routes/auth';
 import receiptRoutes from '@/routes/receipts';
+import mobileReceiptRoutes from '@/routes/receipts-mobile';
+import userContextRoutes from '@/routes/user-context';
 import companyRoutes from '@/routes/companies';
 import searchRoutes from '@/routes/search';
+import jobsRoutes from '@/routes/jobs';
+import emailProcessingRoutes from '@/routes/email-processing';
+import securityRoutes from '@/routes/security';
+import analyticsRoutes from '@/routes/analytics';
+import approvalWorkflowRoutes from '@/routes/approval-workflow';
 // Other routes temporarily disabled for now
 // import userRoutes from '@/routes/users';
 // import adminRoutes from '@/routes/admin';
@@ -95,8 +102,15 @@ async function buildServer(): Promise<FastifyInstance> {
     // API routes
     await server.register(authRoutes, { prefix: '/auth' });
     await server.register(receiptRoutes, { prefix: '/receipts' });
+    await server.register(mobileReceiptRoutes, { prefix: '/api/v1/receipts' });
+    await server.register(userContextRoutes, { prefix: '/api/v1/user' });
     await server.register(companyRoutes, { prefix: '/companies' });
     await server.register(searchRoutes, { prefix: '/search' });
+    await server.register(jobsRoutes, { prefix: '/jobs' });
+    await server.register(emailProcessingRoutes, { prefix: '/email' });
+    await server.register(securityRoutes, { prefix: '/security' });
+    await server.register(analyticsRoutes, { prefix: '/analytics' });
+    await server.register(approvalWorkflowRoutes, { prefix: '/approvals' });
     // await server.register(userRoutes, { prefix: '/api/users' });
     // await server.register(adminRoutes, { prefix: '/api/admin' });
 

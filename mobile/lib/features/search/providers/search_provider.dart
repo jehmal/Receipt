@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 
 import '../../../core/config/app_config.dart';
 import '../../../core/storage/local_storage.dart';
@@ -76,15 +77,15 @@ class SearchNotifier extends _$SearchNotifier {
         'to': filters.dateRange!.end.toIso8601String(),
       },
       if (filters?.categories.isNotEmpty == true)
-        'categories': filters!.categories.join(','),
+        'categories': filters.categories.join(','),
       if (filters?.tags.isNotEmpty == true)
-        'tags': filters!.tags.join(','),
+        'tags': filters.tags.join(','),
       if (filters?.amountRange != null) ...{
-        'min_amount': filters!.amountRange!.start,
-        'max_amount': filters!.amountRange!.end,
+        'min_amount': filters.amountRange!.start,
+        'max_amount': filters.amountRange!.end,
       },
       if (filters?.vendor?.isNotEmpty == true)
-        'vendor': filters!.vendor,
+        'vendor': filters.vendor,
     };
 
     final response = await dio.get(
@@ -265,34 +266,34 @@ class FilterOptionsNotifier extends _$FilterOptionsNotifier {
 sealed class SearchState {
   const SearchState();
   
-  factory SearchState.initial() = _InitialState;
-  factory SearchState.loading() = _LoadingState;
+  factory SearchState.initial() = SearchInitialState;
+  factory SearchState.loading() = SearchLoadingState;
   factory SearchState.success({
     required List<Receipt> results,
     required String query,
     SearchFilters? filters,
     QuickFilter? quickFilter,
-    bool isSemanticSearch = false,
-  }) = _SuccessState;
-  factory SearchState.error({required String message}) = _ErrorState;
+    bool isSemanticSearch,
+  }) = SearchSuccessState;
+  factory SearchState.error({required String message}) = SearchErrorState;
 }
 
-class _InitialState extends SearchState {
-  const _InitialState();
+class SearchInitialState extends SearchState {
+  const SearchInitialState();
 }
 
-class _LoadingState extends SearchState {
-  const _LoadingState();
+class SearchLoadingState extends SearchState {
+  const SearchLoadingState();
 }
 
-class _SuccessState extends SearchState {
+class SearchSuccessState extends SearchState {
   final List<Receipt> results;
   final String query;
   final SearchFilters? filters;
   final QuickFilter? quickFilter;
   final bool isSemanticSearch;
 
-  const _SuccessState({
+  const SearchSuccessState({
     required this.results,
     required this.query,
     this.filters,
@@ -301,9 +302,9 @@ class _SuccessState extends SearchState {
   });
 }
 
-class _ErrorState extends SearchState {
+class SearchErrorState extends SearchState {
   final String message;
-  const _ErrorState({required this.message});
+  const SearchErrorState({required this.message});
 }
 
 class SearchFilters {
@@ -442,19 +443,7 @@ class FilterOptions {
   }
 }
 
-class DateTimeRange {
-  final DateTime start;
-  final DateTime end;
-
-  const DateTimeRange({
-    required this.start,
-    required this.end,
-  });
-}
-
-class RangeValues {
-  final double start;
-  final double end;
-
-  const RangeValues(this.start, this.end);
-}
+// Legacy provider aliases for compatibility
+final searchProvider = searchNotifierProvider;
+final searchSuggestionsProvider = searchSuggestionsNotifierProvider;
+final filterOptionsProvider = filterOptionsNotifierProvider;

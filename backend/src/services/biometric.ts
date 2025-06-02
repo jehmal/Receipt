@@ -487,6 +487,60 @@ class BiometricService {
       createdAt: row.created_at
     };
   }
+
+  // Additional methods for security controller
+  async getStatus(userId: string): Promise<any> {
+    try {
+      const settings = await this.getSettings(userId);
+      const templates = await this.getTemplates(userId);
+      
+      return {
+        isEnabled: settings?.isEnabled || false,
+        enabledMethods: settings?.enabledMethods || [],
+        registeredTemplates: templates.length,
+        lastUsed: templates.reduce((latest, template) => {
+          if (!template.lastUsed) return latest;
+          return !latest || template.lastUsed > latest ? template.lastUsed : latest;
+        }, null as Date | null)
+      };
+    } catch (error) {
+      logger.error('Error getting biometric status:', error);
+      return {
+        isEnabled: false,
+        enabledMethods: [],
+        registeredTemplates: 0,
+        lastUsed: null
+      };
+    }
+  }
+
+  async setup(userId: string, templateType: string): Promise<any> {
+    try {
+      const challenge = await this.createChallenge(userId, templateType as any);
+      return {
+        challengeId: challenge.id,
+        challengeData: challenge.challengeData,
+        message: 'Biometric setup initiated. Complete the challenge to register.'
+      };
+    } catch (error) {
+      logger.error('Error setting up biometric:', error);
+      throw error;
+    }
+  }
+
+  async verify(userId: string, challengeId: string, response: string): Promise<any> {
+    try {
+      const result = await this.verifyChallenge(challengeId, response);
+      return {
+        isValid: result.isValid,
+        confidence: result.confidence,
+        message: result.isValid ? 'Biometric verified successfully' : 'Biometric verification failed'
+      };
+    } catch (error) {
+      logger.error('Error verifying biometric:', error);
+      throw error;
+    }
+  }
 }
 
 export const biometricService = new BiometricService();

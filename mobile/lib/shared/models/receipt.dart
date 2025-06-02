@@ -103,6 +103,14 @@ class Receipt extends HiveObject {
   @HiveField(23)
   String? syncError;
 
+  @JsonKey(name: 'jobNumber')
+  @HiveField(24)
+  String? jobNumber;
+
+  @JsonKey(name: 'imageUrl')
+  @HiveField(25)
+  String? imageUrl;
+
   Receipt({
     required this.id,
     required this.userId,
@@ -128,6 +136,8 @@ class Receipt extends HiveObject {
     this.localImagePath,
     this.isSynced = false,
     this.syncError,
+    this.jobNumber,
+    this.imageUrl,
   });
 
   // Computed properties for backward compatibility
@@ -165,6 +175,8 @@ class Receipt extends HiveObject {
     String? localImagePath,
     bool? isSynced,
     String? syncError,
+    String? jobNumber,
+    String? imageUrl,
   }) {
     return Receipt(
       id: id ?? this.id,
@@ -191,6 +203,8 @@ class Receipt extends HiveObject {
       localImagePath: localImagePath ?? this.localImagePath,
       isSynced: isSynced ?? this.isSynced,
       syncError: syncError ?? this.syncError,
+      jobNumber: jobNumber ?? this.jobNumber,
+      imageUrl: imageUrl ?? this.imageUrl,
     );
   }
 }

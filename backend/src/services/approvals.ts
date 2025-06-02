@@ -841,4 +841,4 @@ export const approvalsService = {
   }
 };
 
-export { approvalsService };
+// Export already defined above

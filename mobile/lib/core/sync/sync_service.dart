@@ -129,7 +129,7 @@ class SyncService {
     }
   }
 
-  // Sync receipt actions
+  // Sync receipt actions with conflict resolution
   Future<bool> _syncReceiptAction(
     String action,
     String? entityId,
@@ -140,7 +140,7 @@ class SyncService {
         case 'create':
           return await _syncCreateReceipt(payload);
         case 'update':
-          return await _syncUpdateReceipt(entityId!, payload);
+          return await _syncUpdateReceiptWithConflictResolution(entityId!, payload);
         case 'delete':
           return await _syncDeleteReceipt(entityId!);
         default:
@@ -225,12 +225,36 @@ class SyncService {
     }
   }
 
-  // Update receipt on server
-  Future<bool> _syncUpdateReceipt(String receiptId, Map<String, dynamic> payload) async {
+  // Update receipt on server with conflict resolution
+  Future<bool> _syncUpdateReceiptWithConflictResolution(String receiptId, Map<String, dynamic> payload) async {
     try {
+      // First, get the latest version from server to check for conflicts
+      final latestResponse = await _apiClient.get('/receipts/$receiptId');
+      
+      if (latestResponse.statusCode == 200) {
+        final serverReceipt = latestResponse.data['data']['receipt'];
+        final localReceipt = await _db.getReceiptById(receiptId);
+        
+        if (localReceipt != null && _hasConflict(localReceipt, serverReceipt)) {
+          // Conflict detected - resolve using last-write-wins strategy
+          final localTimestamp = DateTime.parse(localReceipt.updatedAt);
+          final serverTimestamp = DateTime.parse(serverReceipt['updated_at']);
+          
+          if (serverTimestamp.isAfter(localTimestamp)) {
+            // Server wins - update local with server data
+            await _updateLocalReceiptFromServer(receiptId, serverReceipt);
+            return true;
+          }
+        }
+      }
+      
+      // No conflict or local wins - proceed with update
       final response = await _apiClient.put(
         '/receipts/$receiptId',
-        data: payload,
+        data: {
+          ...payload,
+          'version': payload['version'], // Include version for optimistic locking
+        },
       );
 
       if (response.statusCode == 200) {
@@ -240,10 +264,14 @@ class SyncService {
           final updatedReceipt = localReceipt.copyWith(
             isSynced: true,
             syncError: null,
+            version: response.data['data']['receipt']['version'],
           );
           await _db.updateReceipt(updatedReceipt);
         }
         return true;
+      } else if (response.statusCode == 409) {
+        // Conflict on server - handle conflict resolution
+        return await _handleServerConflict(receiptId, payload);
       }
 
       return false;
@@ -251,6 +279,103 @@ class SyncService {
       debugPrint('Error updating receipt on server: $e');
       return false;
     }
+  }
+  
+  // Handle server-side conflicts
+  Future<bool> _handleServerConflict(String receiptId, Map<String, dynamic> payload) async {
+    debugPrint('Handling server conflict for receipt $receiptId');
+    
+    try {
+      // Get fresh server data
+      final serverResponse = await _apiClient.get('/receipts/$receiptId');
+      if (serverResponse.statusCode != 200) return false;
+      
+      final serverReceipt = serverResponse.data['data']['receipt'];
+      final localReceipt = await _db.getReceiptById(receiptId);
+      
+      if (localReceipt == null) return false;
+      
+      // Merge strategy: prefer local user changes, keep server OCR data
+      final mergedData = _mergeReceiptData(localReceipt, serverReceipt, payload);
+      
+      // Attempt update with merged data
+      final response = await _apiClient.put(
+        '/receipts/$receiptId',
+        data: mergedData,
+      );
+      
+      if (response.statusCode == 200) {
+        await _updateLocalReceiptFromServer(receiptId, response.data['data']['receipt']);
+        return true;
+      }
+      
+      return false;
+    } catch (e) {
+      debugPrint('Error handling server conflict: $e');
+      return false;
+    }
+  }
+  
+  // Merge receipt data with conflict resolution strategy
+  Map<String, dynamic> _mergeReceiptData(
+    dynamic localReceipt, 
+    Map<String, dynamic> serverReceipt, 
+    Map<String, dynamic> localChanges
+  ) {
+    return {
+      // Server data for OCR fields (authoritative)
+      'ocr_text': serverReceipt['ocr_text'],
+      'ocr_confidence': serverReceipt['ocr_confidence'],
+      'vendor_name': serverReceipt['vendor_name'],
+      'total_amount': serverReceipt['total_amount'],
+      'receipt_date': serverReceipt['receipt_date'],
+      
+      // Local data for user-modified fields
+      'category': localChanges['category'] ?? localReceipt.category,
+      'description': localChanges['description'] ?? localReceipt.description,
+      'tags': localChanges['tags'] ?? localReceipt.tags,
+      'notes': localChanges['notes'] ?? localReceipt.notes,
+      
+      // Version control
+      'version': serverReceipt['version'],
+    };
+  }
+  
+  // Update local receipt from server data
+  Future<void> _updateLocalReceiptFromServer(String receiptId, Map<String, dynamic> serverReceipt) async {
+    final localReceipt = await _db.getReceiptById(receiptId);
+    if (localReceipt == null) return;
+    
+    final updatedReceipt = localReceipt.copyWith(
+      vendorName: serverReceipt['vendor_name'],
+      totalAmount: serverReceipt['total_amount']?.toDouble(),
+      receiptDate: serverReceipt['receipt_date'] != null 
+          ? DateTime.parse(serverReceipt['receipt_date']) 
+          : null,
+      category: serverReceipt['category'],
+      ocrText: serverReceipt['ocr_text'],
+      ocrConfidence: serverReceipt['ocr_confidence']?.toDouble(),
+      version: serverReceipt['version'],
+      isSynced: true,
+      syncError: null,
+    );
+    
+    await _db.updateReceipt(updatedReceipt);
+  }
+  
+  // Check if there's a conflict between local and server data
+  bool _hasConflict(dynamic localReceipt, Map<String, dynamic> serverReceipt) {
+    final localTimestamp = DateTime.parse(localReceipt.updatedAt);
+    final serverTimestamp = DateTime.parse(serverReceipt['updated_at']);
+    
+    // Consider it a conflict if both have been modified and versions differ
+    return localReceipt.version != serverReceipt['version'] && 
+           localTimestamp.isAfter(serverTimestamp.subtract(const Duration(seconds: 30)));
+  }
+
+  // Update receipt on server (legacy method)
+  Future<bool> _syncUpdateReceipt(String receiptId, Map<String, dynamic> payload) async {
+    return await _syncUpdateReceiptWithConflictResolution(receiptId, payload);
   }
 
   // Delete receipt on server

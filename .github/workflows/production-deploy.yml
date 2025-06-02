@@ -1,0 +1,585 @@
+# Receipt Vault Pro - Production Deployment Pipeline
+# Comprehensive CI/CD pipeline with security scanning, testing, and blue-green deployment
+
+name: Production Deployment Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+
+env:
+  NODE_VERSION: '18'
+  FLUTTER_VERSION: '3.16.0'
+  AWS_REGION: 'us-east-1'
+
+jobs:
+  # Pre-flight checks and linting
+  lint-and-validate:
+    name: Lint and Validate Code
+    runs-on: ubuntu-latest
+    outputs:
+      backend-changed: ${{ steps.changes.outputs.backend }}
+      mobile-changed: ${{ steps.changes.outputs.mobile }}
+      terraform-changed: ${{ steps.changes.outputs.terraform }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Detect changes
+      uses: dorny/paths-filter@v2
+      id: changes
+      with:
+        filters: |
+          backend:
+            - 'backend/**'
+          mobile:
+            - 'mobile/**'
+          terraform:
+            - 'terraform/**'
+
+    - name: Setup Node.js
+      if: steps.changes.outputs.backend == 'true'
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: backend/package-lock.json
+
+    - name: Install backend dependencies
+      if: steps.changes.outputs.backend == 'true'
+      run: |
+        cd backend
+        npm ci
+
+    - name: Lint backend code
+      if: steps.changes.outputs.backend == 'true'
+      run: |
+        cd backend
+        npm run lint
+        npm run format:check
+
+    - name: Setup Flutter
+      if: steps.changes.outputs.mobile == 'true'
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ env.FLUTTER_VERSION }}
+        cache: true
+
+    - name: Install mobile dependencies
+      if: steps.changes.outputs.mobile == 'true'
+      run: |
+        cd mobile
+        flutter pub get
+
+    - name: Lint mobile code
+      if: steps.changes.outputs.mobile == 'true'
+      run: |
+        cd mobile
+        flutter analyze
+        dart format --set-exit-if-changed .
+
+    - name: Setup Terraform
+      if: steps.changes.outputs.terraform == 'true'
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: '1.6.0'
+
+    - name: Terraform Format Check
+      if: steps.changes.outputs.terraform == 'true'
+      run: |
+        cd terraform
+        terraform fmt -check -recursive
+
+    - name: Terraform Validation
+      if: steps.changes.outputs.terraform == 'true'
+      run: |
+        cd terraform
+        terraform init -backend=false
+        terraform validate
+
+  # Security scanning
+  security-scan:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    needs: lint-and-validate
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Snyk to check for vulnerabilities
+      uses: snyk/actions/node@master
+      continue-on-error: true
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        args: --severity-threshold=high --file=backend/package.json
+
+    - name: Run OWASP ZAP Baseline Scan
+      uses: zaproxy/action-baseline@v0.10.0
+      with:
+        target: 'http://localhost:3000'
+        rules_file_name: '.zap/rules.tsv'
+        cmd_options: '-a'
+
+    - name: Terraform Security Scan
+      if: needs.lint-and-validate.outputs.terraform-changed == 'true'
+      uses: aquasecurity/tfsec-action@v1.0.3
+      with:
+        working_directory: terraform
+        soft_fail: true
+
+    - name: Upload security scan results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'zap-results.sarif'
+
+  # Backend testing
+  test-backend:
+    name: Test Backend
+    runs-on: ubuntu-latest
+    needs: lint-and-validate
+    if: needs.lint-and-validate.outputs.backend-changed == 'true'
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_receipt_vault
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: backend/package-lock.json
+
+    - name: Install dependencies
+      run: |
+        cd backend
+        npm ci
+
+    - name: Run database migrations
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_receipt_vault
+      run: |
+        cd backend
+        npm run db:migrate
+
+    - name: Run unit tests
+      env:
+        NODE_ENV: test
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_receipt_vault
+        REDIS_URL: redis://localhost:6379
+        JWT_SECRET: test-secret
+      run: |
+        cd backend
+        npm test -- --coverage --watchAll=false
+
+    - name: Run integration tests
+      env:
+        NODE_ENV: test
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_receipt_vault
+        REDIS_URL: redis://localhost:6379
+        JWT_SECRET: test-secret
+      run: |
+        cd backend
+        npm run test:integration
+
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        file: backend/coverage/lcov.info
+        flags: backend
+        name: backend-coverage
+
+  # Mobile testing
+  test-mobile:
+    name: Test Mobile App
+    runs-on: ubuntu-latest
+    needs: lint-and-validate
+    if: needs.lint-and-validate.outputs.mobile-changed == 'true'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ env.FLUTTER_VERSION }}
+        cache: true
+
+    - name: Install dependencies
+      run: |
+        cd mobile
+        flutter pub get
+
+    - name: Run code generation
+      run: |
+        cd mobile
+        flutter packages pub run build_runner build --delete-conflicting-outputs
+
+    - name: Run unit tests
+      run: |
+        cd mobile
+        flutter test --coverage
+
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        file: mobile/coverage/lcov.info
+        flags: mobile
+        name: mobile-coverage
+
+  # Build and package
+  build:
+    name: Build Applications
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-mobile, security-scan]
+    if: always() && (needs.test-backend.result == 'success' || needs.test-backend.result == 'skipped') && (needs.test-mobile.result == 'success' || needs.test-mobile.result == 'skipped')
+    
+    outputs:
+      backend-image: ${{ steps.backend-build.outputs.image }}
+      mobile-version: ${{ steps.mobile-build.outputs.version }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build backend Docker image
+      id: backend-build
+      if: needs.lint-and-validate.outputs.backend-changed == 'true'
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: receipt-vault-backend
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        cd backend
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        
+        # Security scan with Trivy
+        docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+          -v $HOME/Library/Caches:/root/.cache/ aquasec/trivy:latest \
+          image --exit-code 1 --severity HIGH,CRITICAL $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        
+        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+    - name: Setup Flutter
+      if: needs.lint-and-validate.outputs.mobile-changed == 'true'
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ env.FLUTTER_VERSION }}
+        cache: true
+
+    - name: Build mobile app
+      id: mobile-build
+      if: needs.lint-and-validate.outputs.mobile-changed == 'true'
+      run: |
+        cd mobile
+        flutter pub get
+        flutter packages pub run build_runner build --delete-conflicting-outputs
+        
+        # Build APK for testing
+        flutter build apk --release
+        
+        # Extract version
+        VERSION=$(grep "version:" pubspec.yaml | sed 's/version: //' | tr -d ' ')
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        
+        # Upload artifacts
+        mkdir -p ../artifacts
+        cp build/app/outputs/flutter-apk/app-release.apk ../artifacts/receipt-vault-$VERSION.apk
+
+    - name: Upload mobile artifacts
+      if: needs.lint-and-validate.outputs.mobile-changed == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: mobile-artifacts
+        path: artifacts/
+        retention-days: 30
+
+  # Deploy to staging
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: staging
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: '1.6.0'
+
+    - name: Deploy infrastructure
+      if: needs.lint-and-validate.outputs.terraform-changed == 'true'
+      run: |
+        cd terraform/environments/staging
+        terraform init
+        terraform plan -var-file="staging.tfvars"
+        terraform apply -auto-approve -var-file="staging.tfvars"
+
+    - name: Deploy application
+      if: needs.build.outputs.backend-image != ''
+      run: |
+        # Update ECS service or trigger deployment
+        aws ecs update-service \
+          --cluster receipt-vault-staging \
+          --service receipt-vault-backend \
+          --force-new-deployment \
+          --region ${{ env.AWS_REGION }}
+
+    - name: Wait for deployment
+      run: |
+        aws ecs wait services-stable \
+          --cluster receipt-vault-staging \
+          --services receipt-vault-backend \
+          --region ${{ env.AWS_REGION }}
+
+    - name: Run smoke tests
+      run: |
+        # Wait for application to be ready
+        sleep 60
+        
+        # Basic health check
+        STAGING_URL=$(aws ssm get-parameter --name "/receipt-vault/staging/app-url" --query "Parameter.Value" --output text --region ${{ env.AWS_REGION }})
+        
+        curl -f "$STAGING_URL/health" || exit 1
+        
+        # Run API tests
+        cd backend
+        npm install -g newman
+        newman run tests/postman/staging-tests.json \
+          --env-var "base_url=$STAGING_URL" \
+          --reporters cli,junit \
+          --reporter-junit-export staging-test-results.xml
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: staging-test-results
+        path: backend/staging-test-results.xml
+
+  # Production deployment (manual approval required)
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [deploy-staging]
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    environment: production
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: '1.6.0'
+
+    - name: Deploy infrastructure
+      run: |
+        cd terraform/environments/production
+        terraform init
+        terraform plan -var-file="production.tfvars"
+        terraform apply -auto-approve -var-file="production.tfvars"
+
+    - name: Blue-Green Deployment
+      run: |
+        # Get current and target target groups
+        CURRENT_TG=$(aws elbv2 describe-listeners \
+          --load-balancer-arn $(aws ssm get-parameter --name "/receipt-vault/production/alb-arn" --query "Parameter.Value" --output text) \
+          --query "Listeners[0].DefaultActions[0].TargetGroupArn" --output text)
+        
+        # Create new target group for blue-green deployment
+        NEW_TG_ARN=$(aws elbv2 create-target-group \
+          --name "receipt-vault-prod-$(date +%s)" \
+          --protocol HTTP \
+          --port 3000 \
+          --vpc-id $(aws ssm get-parameter --name "/receipt-vault/production/vpc-id" --query "Parameter.Value" --output text) \
+          --health-check-path /health \
+          --query "TargetGroups[0].TargetGroupArn" --output text)
+        
+        # Update auto scaling group to use new target group
+        aws autoscaling attach-load-balancer-target-groups \
+          --auto-scaling-group-name receipt-vault-production-asg \
+          --target-group-arns $NEW_TG_ARN
+        
+        # Wait for instances to be healthy
+        aws elbv2 wait target-in-service \
+          --target-group-arn $NEW_TG_ARN
+        
+        # Switch traffic to new target group
+        aws elbv2 modify-listener \
+          --listener-arn $(aws elbv2 describe-listeners --load-balancer-arn $(aws ssm get-parameter --name "/receipt-vault/production/alb-arn" --query "Parameter.Value" --output text) --query "Listeners[0].ListenerArn" --output text) \
+          --default-actions Type=forward,TargetGroupArn=$NEW_TG_ARN
+        
+        # Run production smoke tests
+        sleep 60
+        PROD_URL=$(aws ssm get-parameter --name "/receipt-vault/production/app-url" --query "Parameter.Value" --output text)
+        curl -f "$PROD_URL/health" || exit 1
+        
+        # If successful, detach old target group
+        aws autoscaling detach-load-balancer-target-groups \
+          --auto-scaling-group-name receipt-vault-production-asg \
+          --target-group-arns $CURRENT_TG
+        
+        # Clean up old target group (after delay)
+        sleep 300
+        aws elbv2 delete-target-group --target-group-arn $CURRENT_TG
+
+    - name: Post-deployment verification
+      run: |
+        PROD_URL=$(aws ssm get-parameter --name "/receipt-vault/production/app-url" --query "Parameter.Value" --output text)
+        
+        # Comprehensive health checks
+        curl -f "$PROD_URL/health" || exit 1
+        curl -f "$PROD_URL/api/health" || exit 1
+        
+        # Run production test suite
+        cd backend
+        newman run tests/postman/production-tests.json \
+          --env-var "base_url=$PROD_URL" \
+          --reporters cli,junit \
+          --reporter-junit-export production-test-results.xml
+
+    - name: Notify deployment success
+      if: success()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: success
+        text: "✅ Production deployment successful! Version: ${{ github.sha }}"
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+    - name: Notify deployment failure
+      if: failure()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: failure
+        text: "❌ Production deployment failed! Version: ${{ github.sha }}"
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Rollback job (manual trigger)
+  rollback:
+    name: Rollback Deployment
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'rollback'
+    environment: production
+    
+    steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Rollback to previous version
+      run: |
+        # Get previous stable target group
+        PREVIOUS_TG=$(aws ssm get-parameter --name "/receipt-vault/production/previous-target-group" --query "Parameter.Value" --output text)
+        
+        # Switch traffic back to previous target group
+        aws elbv2 modify-listener \
+          --listener-arn $(aws elbv2 describe-listeners --load-balancer-arn $(aws ssm get-parameter --name "/receipt-vault/production/alb-arn" --query "Parameter.Value" --output text) --query "Listeners[0].ListenerArn" --output text) \
+          --default-actions Type=forward,TargetGroupArn=$PREVIOUS_TG
+        
+        echo "Rollback completed to previous stable version"
+
+    - name: Notify rollback
+      uses: 8398a7/action-slack@v3
+      with:
+        status: custom
+        custom_payload: |
+          {
+            "text": "🔄 Production rollback completed",
+            "attachments": [{
+              "color": "warning",
+              "fields": [{
+                "title": "Environment",
+                "value": "Production",
+                "short": true
+              }, {
+                "title": "Action",
+                "value": "Rollback to previous version",
+                "short": true
+              }]
+            }]
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

@@ -345,7 +345,18 @@ export const approvalsController = {
 
       const updatedConfig = await approvalsService.updateWorkflowConfig(
         (user as any).companyId,
-        config
+        {
+          ...config,
+          notifications: config.notifications ? {
+            emailEnabled: config.notifications.emailEnabled ?? true,
+            slackEnabled: config.notifications.slackEnabled ?? false,
+            reminderAfterHours: config.notifications.reminderAfterHours ?? 24
+          } : {
+            emailEnabled: true,
+            slackEnabled: false,
+            reminderAfterHours: 24
+          }
+        }
       );
 
       // Log configuration change

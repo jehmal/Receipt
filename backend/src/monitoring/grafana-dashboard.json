@@ -1,0 +1,322 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Receipt Vault Pro - Production Monitoring",
+    "tags": ["receipt-vault", "production", "monitoring"],
+    "style": "dark",
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "System Overview",
+        "type": "row",
+        "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+        "collapsed": false
+      },
+      {
+        "id": 2,
+        "title": "Request Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total[5m])",
+            "legendFormat": "Requests/sec"
+          }
+        ],
+        "gridPos": { "h": 8, "w": 6, "x": 0, "y": 1 },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "thresholds" },
+            "thresholds": {
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "yellow", "value": 10 },
+                { "color": "red", "value": 50 }
+              ]
+            },
+            "unit": "reqps"
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Response Time (95th percentile)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "95th percentile"
+          }
+        ],
+        "gridPos": { "h": 8, "w": 6, "x": 6, "y": 1 },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "thresholds" },
+            "thresholds": {
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "yellow", "value": 1 },
+                { "color": "red", "value": 2 }
+              ]
+            },
+            "unit": "s"
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Error Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{status_code!~\"2..\"}[5m]) / rate(http_requests_total[5m])",
+            "legendFormat": "Error Rate"
+          }
+        ],
+        "gridPos": { "h": 8, "w": 6, "x": 12, "y": 1 },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "thresholds" },
+            "thresholds": {
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "yellow", "value": 0.01 },
+                { "color": "red", "value": 0.05 }
+              ]
+            },
+            "unit": "percentunit"
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Active Users",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "receipt_vault_active_users",
+            "legendFormat": "Active Users"
+          }
+        ],
+        "gridPos": { "h": 8, "w": 6, "x": 18, "y": 1 },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 10,
+        "title": "Receipt Processing",
+        "type": "row",
+        "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+        "collapsed": false
+      },
+      {
+        "id": 11,
+        "title": "Receipt Upload Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(receipt_processing_total{operation=\"upload\"}[5m])",
+            "legendFormat": "Uploads/sec"
+          }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
+        "yAxes": [
+          { "label": "uploads/sec", "min": 0 },
+          { "show": false }
+        ]
+      },
+      {
+        "id": 12,
+        "title": "OCR Processing Time",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(ocr_processing_duration_seconds_bucket[5m]))",
+            "legendFormat": "95th percentile"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(ocr_processing_duration_seconds_bucket[5m]))",
+            "legendFormat": "50th percentile"
+          }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+        "yAxes": [
+          { "label": "seconds", "min": 0 },
+          { "show": false }
+        ]
+      },
+      {
+        "id": 13,
+        "title": "Receipt Processing Success Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(receipt_processing_total{status=\"success\"}[5m]) / rate(receipt_processing_total[5m])",
+            "legendFormat": "Success Rate"
+          }
+        ],
+        "gridPos": { "h": 8, "w": 24, "x": 0, "y": 18 },
+        "yAxes": [
+          { "label": "percentage", "min": 0, "max": 1 },
+          { "show": false }
+        ]
+      },
+      {
+        "id": 20,
+        "title": "System Resources",
+        "type": "row",
+        "gridPos": { "h": 1, "w": 24, "x": 0, "y": 26 },
+        "collapsed": false
+      },
+      {
+        "id": 21,
+        "title": "Memory Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "memory_usage_bytes{type=\"heapUsed\"}",
+            "legendFormat": "Heap Used"
+          },
+          {
+            "expr": "memory_usage_bytes{type=\"heapTotal\"}",
+            "legendFormat": "Heap Total"
+          },
+          {
+            "expr": "memory_usage_bytes{type=\"rss\"}",
+            "legendFormat": "RSS"
+          }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 27 },
+        "yAxes": [
+          { "label": "bytes", "min": 0 },
+          { "show": false }
+        ]
+      },
+      {
+        "id": 22,
+        "title": "CPU Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(receipt_vault_process_cpu_user_seconds_total[5m])",
+            "legendFormat": "User CPU"
+          },
+          {
+            "expr": "rate(receipt_vault_process_cpu_system_seconds_total[5m])",
+            "legendFormat": "System CPU"
+          }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 27 },
+        "yAxes": [
+          { "label": "seconds", "min": 0 },
+          { "show": false }
+        ]
+      },
+      {
+        "id": 23,
+        "title": "Database Connections",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "database_connections_active",
+            "legendFormat": "Active Connections"
+          }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 35 },
+        "yAxes": [
+          { "label": "connections", "min": 0 },
+          { "show": false }
+        ]
+      },
+      {
+        "id": 24,
+        "title": "Event Loop Lag",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "receipt_vault_nodejs_eventloop_lag_seconds",
+            "legendFormat": "Event Loop Lag"
+          }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 35 },
+        "yAxes": [
+          { "label": "seconds", "min": 0 },
+          { "show": false }
+        ]
+      },
+      {
+        "id": 30,
+        "title": "Business Metrics",
+        "type": "row",
+        "gridPos": { "h": 1, "w": 24, "x": 0, "y": 43 },
+        "collapsed": false
+      },
+      {
+        "id": 31,
+        "title": "Daily Receipts Processed",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(increase(receipt_processing_total{status=\"success\"}[24h]))",
+            "legendFormat": "Total Today"
+          }
+        ],
+        "gridPos": { "h": 8, "w": 6, "x": 0, "y": 44 },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 32,
+        "title": "OCR Provider Performance",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(ocr_processing_duration_seconds_bucket[5m])) by (provider)",
+            "legendFormat": "{{provider}} - 95th percentile"
+          }
+        ],
+        "gridPos": { "h": 8, "w": 18, "x": 6, "y": 44 },
+        "yAxes": [
+          { "label": "seconds", "min": 0 },
+          { "show": false }
+        ]
+      },
+      {
+        "id": 40,
+        "title": "Alerts & Health",
+        "type": "row",
+        "gridPos": { "h": 1, "w": 24, "x": 0, "y": 52 },
+        "collapsed": false
+      },
+      {
+        "id": 41,
+        "title": "Error Logs",
+        "type": "logs",
+        "targets": [
+          {
+            "expr": "{job=\"receipt-vault-pro\"} |= \"ERROR\"",
+            "legendFormat": ""
+          }
+        ],
+        "gridPos": { "h": 8, "w": 24, "x": 0, "y": 53 }
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "timepicker": {
+      "refresh_intervals": ["5s", "10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"]
+    },
+    "refresh": "30s",
+    "version": 1
+  }
+} 

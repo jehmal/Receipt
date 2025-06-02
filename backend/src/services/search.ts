@@ -1,5 +1,7 @@
 import { db } from '@/database/connection';
 import { redis as redisClient } from '@/config/redis';
+import { elasticsearchService, type ElasticsearchSearchOptions } from './elasticsearch';
+import { logger } from '@/utils/logger';
 
 export interface SearchFilters {
   userId: string;
@@ -91,6 +93,8 @@ export interface SavedSearch {
 }
 
 class SearchService {
+  private useElasticsearch = true;
+
   async searchReceipts(filters: SearchFilters, options: SearchOptions = {}): Promise<SearchResponse> {
     const startTime = Date.now();
     
@@ -112,6 +116,138 @@ class SearchService {
       result.queryTime = Date.now() - startTime;
       return result;
     }
+
+    let response: SearchResponse;
+
+    try {
+      // Try Elasticsearch first for better search capabilities
+      if (this.useElasticsearch && filters.query) {
+        response = await this.searchWithElasticsearch(filters, options);
+      } else {
+        // Fallback to PostgreSQL for non-text searches or when ES is unavailable
+        response = await this.searchWithPostgreSQL(filters, options);
+      }
+    } catch (elasticsearchError) {
+      logger.warn('Elasticsearch search failed, falling back to PostgreSQL:', elasticsearchError);
+      this.useElasticsearch = false;
+      response = await this.searchWithPostgreSQL(filters, options);
+    }
+
+    response.queryTime = Date.now() - startTime;
+
+    // Cache results for 5 minutes for popular searches
+    if (response.results.length > 0) {
+      await redisClient.setex(cacheKey, 300, JSON.stringify(response));
+    }
+
+    return response;
+  }
+
+  /**
+   * Enhanced search using Elasticsearch
+   */
+  private async searchWithElasticsearch(filters: SearchFilters, options: SearchOptions): Promise<SearchResponse> {
+    const {
+      page = 1,
+      limit = 20,
+      sortBy = 'relevance',
+      sortOrder = 'desc',
+      facets = [],
+      highlight = false
+    } = options;
+
+    // Convert filters to Elasticsearch format
+    const esOptions: ElasticsearchSearchOptions = {
+      query: filters.query,
+      filters: {
+        userId: filters.userId,
+        companyId: filters.companyId,
+        category: filters.category ? [filters.category] : undefined,
+        tags: filters.tags,
+        dateFrom: filters.dateFrom?.toISOString(),
+        dateTo: filters.dateTo?.toISOString(),
+        amountMin: filters.amountMin,
+        amountMax: filters.amountMax,
+        vendorName: filters.merchantName,
+        paymentMethod: filters.paymentMethod ? [filters.paymentMethod] : undefined,
+        status: filters.status ? [filters.status] : undefined,
+        department: filters.department ? [filters.department] : undefined,
+        requiresApproval: filters.requiresApproval
+      },
+      pagination: {
+        page,
+        size: limit
+      },
+      sorting: {
+        field: sortBy === 'merchant' ? 'vendor' : sortBy,
+        order: sortOrder
+      },
+      aggregations: facets,
+      highlight
+    };
+
+    const esResult = await elasticsearchService.searchReceipts(esOptions);
+
+    // Convert Elasticsearch results to our format
+    const results: SearchResult[] = esResult.hits.documents.map(doc => ({
+      id: doc.id,
+      originalFilename: doc.source.originalFilename,
+      fileUrl: doc.source.originalFilename ? `/uploads/receipts/${doc.source.originalFilename}` : undefined,
+      thumbnailUrl: doc.source.originalFilename ? `/uploads/thumbnails/${doc.source.originalFilename}` : undefined,
+      merchantName: doc.source.vendorName,
+      totalAmount: doc.source.totalAmount,
+      currency: doc.source.currency,
+      receiptDate: doc.source.receiptDate ? new Date(doc.source.receiptDate) : undefined,
+      category: doc.source.category,
+      subcategory: doc.source.subcategory,
+      tags: doc.source.tags,
+      description: doc.source.description,
+      notes: doc.source.notes,
+      paymentMethod: doc.source.paymentMethod,
+      status: doc.source.status,
+      ocrText: doc.source.ocrText,
+      ocrConfidence: doc.source.ocrConfidence,
+      projectCode: doc.source.projectCode,
+      department: doc.source.department,
+      costCenter: doc.source.costCenter,
+      requiresApproval: doc.source.requiresApproval,
+      approvedBy: doc.source.approvedBy,
+      approvedAt: doc.source.approvedAt ? new Date(doc.source.approvedAt) : undefined,
+      createdAt: new Date(doc.source.createdAt),
+      updatedAt: new Date(doc.source.updatedAt),
+      relevanceScore: doc.score,
+      highlights: doc.highlights ? this.convertESHighlights(doc.highlights) : undefined
+    }));
+
+    // Convert aggregations to facets
+    const facetsData = esResult.aggregations ? this.convertESAggregations(esResult.aggregations) : undefined;
+
+    return {
+      results,
+      pagination: {
+        page,
+        limit,
+        total: esResult.hits.total,
+        totalPages: Math.ceil(esResult.hits.total / limit)
+      },
+      facets: facetsData,
+      suggestions: esResult.suggestions,
+      queryTime: esResult.queryTime
+    };
+  }
+
+  /**
+   * Fallback search using PostgreSQL
+   */
+  private async searchWithPostgreSQL(filters: SearchFilters, options: SearchOptions): Promise<SearchResponse> {
+    const {
+      page = 1,
+      limit = 20,
+      sortBy = 'relevance',
+      sortOrder = 'desc',
+      facets = [],
+      highlight = false
+    } = options;
 
     // Build search query
     const query = this.buildSearchQuery(filters, options);
@@ -135,7 +271,7 @@ class SearchService {
     const suggestions = results.length === 0 && filters.query ? 
       await this.generateSuggestions(filters.query) : undefined;
 
-    const response: SearchResponse = {
+    return {
       results,
       pagination: {
         page,
@@ -145,15 +281,132 @@ class SearchService {
       },
       facets: facetsData,
       suggestions,
-      queryTime: Date.now() - startTime
+      queryTime: 0 // Will be set by caller
     };
+  }
 
-    // Cache results for 5 minutes for popular searches
-    if (results.length > 0) {
-      await redisClient.setex(cacheKey, 300, JSON.stringify(response));
+  /**
+   * Convert Elasticsearch highlights to our format
+   */
+  private convertESHighlights(esHighlights: { [field: string]: string[] }): Array<{ field: string; snippet: string }> {
+    const highlights: Array<{ field: string; snippet: string }> = [];
+    
+    Object.entries(esHighlights).forEach(([field, snippets]) => {
+      highlights.push({
+        field: field === 'vendorName' ? 'merchantName' : field,
+        snippet: snippets[0] || ''
+      });
+    });
+
+    return highlights;
+  }
+
+  /**
+   * Convert Elasticsearch aggregations to our facets format
+   */
+  private convertESAggregations(esAggs: any): { [key: string]: Array<{ value: string; count: number }> } {
+    const facets: { [key: string]: Array<{ value: string; count: number }> } = {};
+    
+    if (esAggs.categories) {
+      facets.category = esAggs.categories.buckets.map((bucket: any) => ({
+        value: bucket.key,
+        count: bucket.doc_count
+      }));
     }
 
-    return response;
+    if (esAggs.vendors) {
+      facets.merchant = esAggs.vendors.buckets.map((bucket: any) => ({
+        value: bucket.key,
+        count: bucket.doc_count
+      }));
+    }
+
+    if (esAggs.paymentMethods) {
+      facets.paymentMethod = esAggs.paymentMethods.buckets.map((bucket: any) => ({
+        value: bucket.key,
+        count: bucket.doc_count
+      }));
+    }
+
+    if (esAggs.statuses) {
+      facets.status = esAggs.statuses.buckets.map((bucket: any) => ({
+        value: bucket.key,
+        count: bucket.doc_count
+      }));
+    }
+
+    if (esAggs.departments) {
+      facets.department = esAggs.departments.buckets.map((bucket: any) => ({
+        value: bucket.key,
+        count: bucket.doc_count
+      }));
+    }
+
+    if (esAggs.amountRanges) {
+      facets.amountRange = esAggs.amountRanges.buckets.map((bucket: any) => ({
+        value: bucket.key,
+        count: bucket.doc_count
+      }));
+    }
+
+    return facets;
+  }
+
+  /**
+   * Index receipt in Elasticsearch when created/updated
+   */
+  async indexReceiptInElasticsearch(receiptData: any): Promise<void> {
+    try {
+      if (!this.useElasticsearch) return;
+
+      const esDocument = {
+        id: receiptData.id,
+        userId: receiptData.user_id,
+        companyId: receiptData.company_id,
+        originalFilename: receiptData.original_filename,
+        vendorName: receiptData.vendor_name,
+        totalAmount: receiptData.total_amount ? parseFloat(receiptData.total_amount) : undefined,
+        currency: receiptData.currency,
+        receiptDate: receiptData.receipt_date,
+        category: receiptData.category,
+        subcategory: receiptData.subcategory,
+        tags: receiptData.tags || [],
+        description: receiptData.description,
+        notes: receiptData.notes,
+        paymentMethod: receiptData.payment_method,
+        status: receiptData.status,
+        ocrText: receiptData.ocr_text,
+        ocrConfidence: receiptData.ocr_confidence,
+        projectCode: receiptData.project_code,
+        department: receiptData.department,
+        costCenter: receiptData.cost_center,
+        requiresApproval: receiptData.requires_approval || false,
+        approvedBy: receiptData.approved_by,
+        approvedAt: receiptData.approved_at,
+        createdAt: receiptData.created_at,
+        updatedAt: receiptData.updated_at,
+        businessType: receiptData.structured_data?.businessType,
+        extractedItems: receiptData.structured_data?.items || []
+      };
+
+      await elasticsearchService.indexReceipt(esDocument);
+    } catch (error) {
+      logger.error('Failed to index receipt in Elasticsearch:', error);
+      // Don't fail the operation if Elasticsearch indexing fails
+    }
+  }
+
+  /**
+   * Remove receipt from Elasticsearch when deleted
+   */
+  async removeReceiptFromElasticsearch(receiptId: string): Promise<void> {
+    try {
+      if (!this.useElasticsearch) return;
+      await elasticsearchService.deleteReceipt(receiptId);
+    } catch (error) {
+      logger.error('Failed to remove receipt from Elasticsearch:', error);
+      // Don't fail the operation if Elasticsearch removal fails
+    }
   }
 
   private buildSearchQuery(filters: SearchFilters, options: SearchOptions) {

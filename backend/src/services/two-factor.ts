@@ -367,6 +367,67 @@ class TwoFactorService {
 
     return codes;
   }
+
+  // Additional methods for security controller
+  async getStatus(userId: string): Promise<any> {
+    try {
+      const twoFactorData = await this.getTwoFactorData(userId);
+      return {
+        isEnabled: !!twoFactorData?.isEnabled,
+        isVerified: !!twoFactorData?.verifiedAt,
+        hasBackupCodes: twoFactorData?.backupCodes?.length > 0
+      };
+    } catch (error) {
+      logger.error('Error getting 2FA status:', error);
+      return {
+        isEnabled: false,
+        isVerified: false,
+        hasBackupCodes: false
+      };
+    }
+  }
+
+  async setup(userId: string): Promise<any> {
+    try {
+      const secret = await this.generateSecret(userId);
+      return secret;
+    } catch (error) {
+      logger.error('Error setting up 2FA:', error);
+      throw error;
+    }
+  }
+
+  async verify(userId: string, token: string): Promise<any> {
+    try {
+      const result = await this.verifyToken(userId, token);
+      return { 
+        isValid: result.isValid,
+        message: result.isValid ? 'Token verified' : 'Invalid token'
+      };
+    } catch (error) {
+      logger.error('Error verifying 2FA token:', error);
+      throw error;
+    }
+  }
+
+  async disable(userId: string): Promise<void> {
+    try {
+      await this.disableTwoFactor(userId);
+    } catch (error) {
+      logger.error('Error disabling 2FA:', error);
+      throw error;
+    }
+  }
+
+  async getBackupCodes(userId: string): Promise<string[]> {
+    try {
+      const twoFactorData = await this.getTwoFactorData(userId);
+      return twoFactorData?.backupCodes || [];
+    } catch (error) {
+      logger.error('Error getting backup codes:', error);
+      return [];
+    }
+  }
 }
 
 export const twoFactorService = new TwoFactorService();

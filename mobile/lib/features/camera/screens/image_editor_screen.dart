@@ -91,13 +91,14 @@ class _ImageEditorScreenState extends ConsumerState<ImageEditorScreen>
     setState(() => _isProcessing = true);
     
     try {
-      final enhancedPath = await ref
+      await ref
           .read(imageProcessingProvider.notifier)
           .enhanceImage(_processedImagePath!);
       
-      if (enhancedPath != null) {
+      final state = ref.read(imageProcessingProvider);
+      if (state is ImageProcessingCompletedState) {
         setState(() {
-          _processedImagePath = enhancedPath;
+          _processedImagePath = state.processedPath;
         });
       }
     } catch (e) {
@@ -111,14 +112,49 @@ class _ImageEditorScreenState extends ConsumerState<ImageEditorScreen>
     setState(() => _isProcessing = true);
     
     try {
-      final filteredPath = await ref
-          .read(imageProcessingProvider.notifier)
-          .applyFilter(_processedImagePath!, filter);
+      // Apply basic filters based on the filter type
+      ImageProcessingOptions? options;
       
-      if (filteredPath != null) {
-        setState(() {
-          _processedImagePath = filteredPath;
-        });
+      switch (filter) {
+        case ImageFilter.autoEnhance:
+          options = ImageProcessingOptions(
+            brightness: 0.1,
+            contrast: 0.2,
+            autoEnhance: true,
+          );
+          break;
+        case ImageFilter.sharpen:
+          options = ImageProcessingOptions(contrast: 0.3);
+          break;
+        case ImageFilter.brighten:
+          options = ImageProcessingOptions(brightness: 0.3);
+          break;
+        case ImageFilter.contrast:
+          options = ImageProcessingOptions(contrast: 0.4);
+          break;
+        case ImageFilter.grayscale:
+          options = ImageProcessingOptions(saturation: -1.0);
+          break;
+        case ImageFilter.original:
+          // Reset to original
+          setState(() {
+            _processedImagePath = widget.imagePath;
+          });
+          return;
+      }
+      
+      if (options != null) {
+        await ref.read(imageProcessingProvider.notifier).processImage(
+          _processedImagePath!,
+          options: options,
+        );
+        
+        final state = ref.read(imageProcessingProvider);
+        if (state is ImageProcessingCompletedState) {
+          setState(() {
+            _processedImagePath = state.processedPath;
+          });
+        }
       }
     } catch (e) {
       _showErrorSnackBar('Failed to apply filter: $e');
@@ -227,10 +263,7 @@ class _ImageEditorScreenState extends ConsumerState<ImageEditorScreen>
                 _buildCropControls(),
                 
                 // Enhancement controls
-                ImageEnhanceControls(
-                  onEnhance: _enhanceImage,
-                  isProcessing: _isProcessing,
-                ),
+                _buildEnhanceControls(),
                 
                 // Filter controls
                 _buildFilterControls(),
@@ -263,6 +296,50 @@ class _ImageEditorScreenState extends ConsumerState<ImageEditorScreen>
         ],
       ),
     );
+  }
+
+  Widget _buildEnhanceControls() {
+    return ImageEnhanceControls(
+      options: ImageEnhanceOptions.defaults(),
+      onOptionsChanged: (options) {
+        // Apply the enhancement options to the image
+        _applyEnhanceOptions(options);
+      },
+      onAutoEnhance: _enhanceImage,
+      onReset: () {
+        // Reset to original image
+        setState(() {
+          _processedImagePath = widget.imagePath;
+        });
+      },
+    );
+  }
+
+  Future<void> _applyEnhanceOptions(ImageEnhanceOptions options) async {
+    setState(() => _isProcessing = true);
+    
+    try {
+      // Apply the enhancement options using the image processing provider
+      await ref.read(imageProcessingProvider.notifier).processImage(
+        _processedImagePath!,
+        options: ImageProcessingOptions(
+          brightness: options.brightness,
+          contrast: options.contrast,
+          saturation: options.saturation,
+        ),
+      );
+      
+      final state = ref.read(imageProcessingProvider);
+      if (state is ImageProcessingCompletedState) {
+        setState(() {
+          _processedImagePath = state.processedPath;
+        });
+      }
+    } catch (e) {
+      _showErrorSnackBar('Failed to apply enhancements: $e');
+    } finally {
+      setState(() => _isProcessing = false);
+    }
   }
 
   Widget _buildFilterControls() {

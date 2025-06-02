@@ -11,6 +11,8 @@ export interface CreateReceiptData {
   category?: string;
   description?: string;
   tags?: string[];
+  jobNumber?: string;
+  context?: 'personal' | 'company';
   metadata?: Record<string, any>;
 }
 
@@ -91,9 +93,9 @@ class ReceiptService {
       const receiptData = await db.query(
         `INSERT INTO receipts (
           id, user_id, company_id, original_filename, file_path, file_size, 
-          file_hash, mime_type, status, category, description, tags,
+          file_hash, mime_type, status, category, description, tags, job_number,
           created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), NOW())
         RETURNING *`,
         [
           receiptId,
@@ -107,15 +109,27 @@ class ReceiptService {
           'uploaded',
           data.category || null,
           data.description || null,
-          data.tags || null
+          data.tags || null,
+          data.jobNumber || null
         ]
       );
 
       const receipt = receiptData.rows[0];
 
-      // 5. Queue OCR processing (placeholder for now)
-      // TODO: Implement OCR job queue
-      console.log(`Receipt ${receiptId} uploaded, queuing for OCR processing...`);
+      // 5. Queue OCR processing
+      try {
+        const { jobQueueService } = await import('./job-queue');
+        await jobQueueService.addOCRJob({
+          receiptId,
+          filePath: uploadResult.filePath,
+          userId: data.userId,
+          priority: data.context === 'company' ? 1 : 0 // Higher priority for company receipts
+        });
+        console.log(`Receipt ${receiptId} uploaded and queued for OCR processing`);
+      } catch (queueError) {
+        console.warn(`Failed to queue OCR job for receipt ${receiptId}:`, queueError);
+        // Don't fail the upload if queueing fails - can be retried later
+      }
 
       return this.mapDbReceiptToReceipt(receipt, uploadResult.thumbnailPath);
     } catch (error) {
@@ -133,6 +147,72 @@ class ReceiptService {
       
       throw error;
     }
+  }
+
+  async updateReceiptOCR(receiptId: string, ocrData: {
+    ocrText?: string;
+    ocrConfidence?: number;
+    vendorName?: string;
+    totalAmount?: number;
+    currency?: string;
+    receiptDate?: Date;
+    status?: string;
+  }): Promise<Receipt | null> {
+    const updateFields: string[] = [];
+    const params: any[] = [];
+    let paramCount = 0;
+
+    // Build dynamic update query
+    if (ocrData.ocrText !== undefined) {
+      updateFields.push(`ocr_text = $${++paramCount}`);
+      params.push(ocrData.ocrText);
+    }
+    if (ocrData.ocrConfidence !== undefined) {
+      updateFields.push(`ocr_confidence = $${++paramCount}`);
+      params.push(ocrData.ocrConfidence);
+    }
+    if (ocrData.vendorName !== undefined) {
+      updateFields.push(`vendor_name = $${++paramCount}`);
+      params.push(ocrData.vendorName);
+    }
+    if (ocrData.totalAmount !== undefined) {
+      updateFields.push(`total_amount = $${++paramCount}`);
+      params.push(ocrData.totalAmount);
+    }
+    if (ocrData.currency !== undefined) {
+      updateFields.push(`currency = $${++paramCount}`);
+      params.push(ocrData.currency);
+    }
+    if (ocrData.receiptDate !== undefined) {
+      updateFields.push(`receipt_date = $${++paramCount}`);
+      params.push(ocrData.receiptDate);
+    }
+    if (ocrData.status !== undefined) {
+      updateFields.push(`status = $${++paramCount}`);
+      params.push(ocrData.status);
+    }
+
+    if (updateFields.length === 0) {
+      return null;
+    }
+
+    updateFields.push(`updated_at = NOW()`);
+    params.push(receiptId);
+
+    const query = `
+      UPDATE receipts 
+      SET ${updateFields.join(', ')}
+      WHERE id = $${++paramCount}
+      RETURNING *
+    `;
+
+    const result = await db.query(query, params);
+    
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    return this.mapDbReceiptToReceipt(result.rows[0]);
   }
 
   async getReceipts(

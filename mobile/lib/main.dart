@@ -4,6 +4,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import 'core/config/app_config.dart';
 import 'core/storage/local_storage.dart';
+import 'core/auth/workos_auth_service.dart';
 import 'shared/widgets/app.dart';
 
 void main() async {

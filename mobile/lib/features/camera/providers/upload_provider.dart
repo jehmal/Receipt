@@ -185,7 +185,7 @@ class UploadHistoryNotifier extends _$UploadHistoryNotifier {
       ];
 
       // Trigger actual retry
-      await ref.read(uploadProvider.notifier).retryFailedUpload(uploadId);
+      await ref.read(uploadNotifierProvider.notifier).retryFailedUpload(uploadId);
     }
   }
 
@@ -197,29 +197,29 @@ class UploadHistoryNotifier extends _$UploadHistoryNotifier {
 sealed class UploadState {
   const UploadState();
   
-  factory UploadState.idle() = _IdleState;
-  factory UploadState.uploading({required double progress}) = _UploadingState;
-  factory UploadState.success({required Receipt receipt}) = _SuccessState;
-  factory UploadState.error({required String message}) = _ErrorState;
+  factory UploadState.idle() = UploadIdleState;
+  factory UploadState.uploading({required double progress}) = UploadUploadingState;
+  factory UploadState.success({required Receipt receipt}) = UploadSuccessState;
+  factory UploadState.error({required String message}) = UploadErrorState;
 }
 
-class _IdleState extends UploadState {
-  const _IdleState();
+class UploadIdleState extends UploadState {
+  const UploadIdleState();
 }
 
-class _UploadingState extends UploadState {
+class UploadUploadingState extends UploadState {
   final double progress;
-  const _UploadingState({required this.progress});
+  const UploadUploadingState({required this.progress});
 }
 
-class _SuccessState extends UploadState {
+class UploadSuccessState extends UploadState {
   final Receipt receipt;
-  const _SuccessState({required this.receipt});
+  const UploadSuccessState({required this.receipt});
 }
 
-class _ErrorState extends UploadState {
+class UploadErrorState extends UploadState {
   final String message;
-  const _ErrorState({required this.message});
+  const UploadErrorState({required this.message});
 }
 
 class UploadHistoryItem {
@@ -282,3 +282,7 @@ class FailedUpload {
     required this.errorMessage,
   });
 }
+
+// Legacy provider aliases for compatibility
+final uploadProvider = uploadNotifierProvider;
+final uploadHistoryProvider = uploadHistoryNotifierProvider;

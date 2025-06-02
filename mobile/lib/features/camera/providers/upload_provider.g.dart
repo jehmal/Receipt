@@ -23,7 +23,7 @@ final uploadNotifierProvider =
 
 typedef _$UploadNotifier = AutoDisposeNotifier<UploadState>;
 String _$uploadHistoryNotifierHash() =>
-    r'38708c8ed2fe07f95a7ca601e0910e4a24c3cd89';
+    r'9b42805623c8a5fe04e0025678c61e3d022d2705';
 
 /// See also [UploadHistoryNotifier].
 @ProviderFor(UploadHistoryNotifier)

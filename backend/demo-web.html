@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Receipt Vault Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">📄 Receipt Vault Demo</h1>
+            <p class="text-gray-600">Testing your Receipt Management API</p>
+            <div id="status" class="mt-4 p-4 rounded-lg bg-gray-100">
+                <span class="text-gray-500">Checking API status...</span>
+            </div>
+        </div>
+
+        <!-- API Tests -->
+        <div class="grid md:grid-cols-2 gap-6">
+            <!-- Health Check -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold mb-4">🏥 Health Check</h2>
+                <button onclick="testHealth()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                    Test Health
+                </button>
+                <div id="health-result" class="mt-4 p-4 bg-gray-50 rounded text-sm"></div>
+            </div>
+
+            <!-- Demo Info -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold mb-4">ℹ️ Demo Info</h2>
+                <button onclick="testDemo()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                    Get Demo Info
+                </button>
+                <div id="demo-result" class="mt-4 p-4 bg-gray-50 rounded text-sm"></div>
+            </div>
+
+            <!-- Receipts -->
+            <div class="bg-white rounded-lg shadow-md p-6 md:col-span-2">
+                <h2 class="text-xl font-semibold mb-4">🧾 Receipts</h2>
+                <button onclick="testReceipts()" class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600">
+                    Load Receipts
+                </button>
+                <div id="receipts-result" class="mt-4"></div>
+            </div>
+
+            <!-- Analytics -->
+            <div class="bg-white rounded-lg shadow-md p-6 md:col-span-2">
+                <h2 class="text-xl font-semibold mb-4">📊 Analytics</h2>
+                <button onclick="testAnalytics()" class="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600">
+                    Load Analytics
+                </button>
+                <div id="analytics-result" class="mt-4"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000';
+
+        // Check initial status
+        window.onload = function() {
+            checkStatus();
+        };
+
+        async function checkStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                document.getElementById('status').innerHTML = `
+                    <div class="flex items-center">
+                        <span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
+                        <span class="text-green-700 font-semibold">API is running! ${data.message}</span>
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('status').innerHTML = `
+                    <div class="flex items-center">
+                        <span class="w-3 h-3 bg-red-500 rounded-full mr-2"></span>
+                        <span class="text-red-700 font-semibold">API is not running. Start the backend server.</span>
+                    </div>
+                `;
+            }
+        }
+
+        async function testHealth() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                document.getElementById('health-result').innerHTML = `
+                    <pre class="text-green-600">${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                document.getElementById('health-result').innerHTML = `
+                    <pre class="text-red-600">Error: ${error.message}</pre>
+                `;
+            }
+        }
+
+        async function testDemo() {
+            try {
+                const response = await fetch(`${API_BASE}/api/demo`);
+                const data = await response.json();
+                document.getElementById('demo-result').innerHTML = `
+                    <pre class="text-green-600">${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                document.getElementById('demo-result').innerHTML = `
+                    <pre class="text-red-600">Error: ${error.message}</pre>
+                `;
+            }
+        }
+
+        async function testReceipts() {
+            try {
+                const response = await fetch(`${API_BASE}/api/receipts`);
+                const data = await response.json();
+                
+                // Display as cards
+                const receiptsHtml = data.receipts.map(receipt => `
+                    <div class="bg-white border rounded-lg p-4 mb-4 shadow-sm">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-semibold text-lg">${receipt.vendorName}</h3>
+                            <span class="text-2xl font-bold text-green-600">$${receipt.totalAmount}</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 text-sm text-gray-600">
+                            <div>📅 ${receipt.receiptDate}</div>
+                            <div>🏷️ ${receipt.category}</div>
+                            <div>💰 ${receipt.currency}</div>
+                            <div class="flex items-center">
+                                <span class="w-2 h-2 rounded-full mr-1 ${receipt.status === 'processed' ? 'bg-green-500' : 'bg-yellow-500'}"></span>
+                                ${receipt.status}
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+                document.getElementById('receipts-result').innerHTML = `
+                    <div class="mt-4">
+                        <p class="text-gray-600 mb-4">Found ${data.total} receipts:</p>
+                        ${receiptsHtml}
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('receipts-result').innerHTML = `
+                    <pre class="text-red-600">Error: ${error.message}</pre>
+                `;
+            }
+        }
+
+        async function testAnalytics() {
+            try {
+                const response = await fetch(`${API_BASE}/api/analytics`);
+                const data = await response.json();
+                
+                const categoriesHtml = Object.entries(data.categories).map(([category, count]) => `
+                    <div class="flex justify-between items-center py-2 border-b">
+                        <span>${category}</span>
+                        <span class="font-semibold">${count} receipts</span>
+                    </div>
+                `).join('');
+
+                document.getElementById('analytics-result').innerHTML = `
+                    <div class="grid md:grid-cols-3 gap-4 mt-4">
+                        <div class="bg-blue-50 p-4 rounded-lg text-center">
+                            <div class="text-2xl font-bold text-blue-600">${data.totalReceipts}</div>
+                            <div class="text-blue-800">Total Receipts</div>
+                        </div>
+                        <div class="bg-green-50 p-4 rounded-lg text-center">
+                            <div class="text-2xl font-bold text-green-600">$${data.totalAmount.toFixed(2)}</div>
+                            <div class="text-green-800">Total Amount</div>
+                        </div>
+                        <div class="bg-purple-50 p-4 rounded-lg text-center">
+                            <div class="text-2xl font-bold text-purple-600">${Object.keys(data.categories).length}</div>
+                            <div class="text-purple-800">Categories</div>
+                        </div>
+                    </div>
+                    <div class="mt-6">
+                        <h3 class="font-semibold mb-3">Categories Breakdown:</h3>
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            ${categoriesHtml}
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('analytics-result').innerHTML = `
+                    <pre class="text-red-600">Error: ${error.message}</pre>
+                `;
+            }
+        }
+    </script>
+</body>
+</html> 

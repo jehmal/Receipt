@@ -11,17 +11,17 @@ export interface AuthenticatedUser {
   companyId?: string;
 }
 
+export interface AuthRequest extends FastifyRequest {
+  user: AuthenticatedUser;
+  sessionId?: string;
+  deviceId?: string;
+}
+
 declare module 'fastify' {
   interface FastifyInstance {
     authenticate: (request: FastifyRequest, reply: any) => Promise<void>;
     adminOnly: (request: FastifyRequest, reply: any) => Promise<void>;
     companyAdmin: (request: FastifyRequest, reply: any) => Promise<void>;
-  }
-  
-  interface FastifyRequest {
-    user?: AuthenticatedUser;
-    sessionId?: string;
-    deviceId?: string;
   }
 }
 
@@ -92,7 +92,8 @@ const authPlugin: FastifyPluginAsync = async (fastify) => {
     try {
       await fastify.authenticate(request, reply);
       
-      if (!request.user || request.user.role !== 'system_admin') {
+      const authRequest = request as AuthRequest;
+      if (!authRequest.user || authRequest.user.role !== 'system_admin') {
         reply.status(403).send({
           error: 'Forbidden',
           message: 'Admin access required',
@@ -108,7 +109,8 @@ const authPlugin: FastifyPluginAsync = async (fastify) => {
     try {
       await fastify.authenticate(request, reply);
       
-      if (!request.user || !['company_admin', 'system_admin'].includes(request.user.role)) {
+      const authRequest = request as AuthRequest;
+      if (!authRequest.user || !['company_admin', 'system_admin'].includes(authRequest.user.role)) {
         reply.status(403).send({
           error: 'Forbidden',
           message: 'Company admin access required',
@@ -187,7 +189,8 @@ export const requireAuth = async (request: FastifyRequest, reply: any) => {
 export const requireAdmin = async (request: FastifyRequest, reply: any) => {
   await requireAuth(request, reply);
   
-  if (!request.user || request.user.role !== 'system_admin') {
+  const authRequest = request as AuthRequest;
+  if (!authRequest.user || authRequest.user.role !== 'system_admin') {
     reply.status(403).send({
       error: 'Forbidden',
       message: 'Admin access required',
@@ -200,7 +203,8 @@ export const requireCompanyRole = (allowedRoles: string[] = ['company_admin', 's
   return async (request: FastifyRequest, reply: any) => {
     await requireAuth(request, reply);
     
-    if (!request.user || !allowedRoles.includes(request.user.role)) {
+    const authRequest = request as AuthRequest;
+    if (!authRequest.user || !allowedRoles.includes(authRequest.user.role)) {
       reply.status(403).send({
         error: 'Forbidden',
         message: 'Insufficient permissions',

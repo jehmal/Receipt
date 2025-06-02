@@ -50,13 +50,13 @@ export const handleWebhook = async (
     // Process webhook payload here
     // This would typically trigger some business logic
     
-    reply.status(200).send({
+    return reply.status(200).send({
       success: true,
       message: 'Webhook processed successfully'
     });
   } catch (error) {
     logger.error('Error processing webhook:', error);
-    reply.status(500).send({
+    return reply.status(500).send({
       success: false,
       error: 'Internal server error'
     });
@@ -96,7 +96,7 @@ export const listWebhooks = async (
     });
   } catch (error) {
     logger.error('Error listing webhooks:', error);
-    reply.status(500).send({
+    return reply.status(500).send({
       success: false,
       error: 'Internal server error'
     });
@@ -145,7 +145,7 @@ export const createWebhook = async (
     });
   } catch (error) {
     logger.error('Error creating webhook:', error);
-    reply.status(500).send({
+    return reply.status(500).send({
       success: false,
       error: 'Internal server error'
     });
@@ -184,7 +184,7 @@ export const getWebhook = async (
     });
   } catch (error) {
     logger.error('Error getting webhook:', error);
-    reply.status(500).send({
+    return reply.status(500).send({
       success: false,
       error: 'Internal server error'
     });
@@ -235,7 +235,7 @@ export const updateWebhook = async (
     });
   } catch (error) {
     logger.error('Error updating webhook:', error);
-    reply.status(500).send({
+    return reply.status(500).send({
       success: false,
       error: 'Internal server error'
     });
@@ -264,7 +264,7 @@ export const deleteWebhook = async (
     return reply.status(204).send();
   } catch (error) {
     logger.error('Error deleting webhook:', error);
-    reply.status(500).send({
+    return reply.status(500).send({
       success: false,
       error: 'Internal server error'
     });
@@ -302,7 +302,7 @@ export const testWebhook = async (
     });
   } catch (error) {
     logger.error('Error testing webhook:', error);
-    reply.status(500).send({
+    return reply.status(500).send({
       success: false,
       error: 'Internal server error'
     });
@@ -347,7 +347,7 @@ export const getWebhookDeliveries = async (
     });
   } catch (error) {
     logger.error('Error getting webhook deliveries:', error);
-    reply.status(500).send({
+    return reply.status(500).send({
       success: false,
       error: 'Internal server error'
     });
@@ -394,7 +394,7 @@ export const getDeliveryDetails = async (
     });
   } catch (error) {
     logger.error('Error getting delivery details:', error);
-    reply.status(500).send({
+    return reply.status(500).send({
       success: false,
       error: 'Internal server error'
     });
@@ -424,7 +424,7 @@ export const retryDelivery = async (
     });
   } catch (error) {
     logger.error('Error retrying delivery:', error);
-    reply.status(500).send({
+    return reply.status(500).send({
       success: false,
       error: 'Internal server error'
     });
@@ -465,7 +465,7 @@ export const getWebhookStats = async (
     });
   } catch (error) {
     logger.error('Error getting webhook stats:', error);
-    reply.status(500).send({
+    return reply.status(500).send({
       success: false,
       error: 'Internal server error'
     });
@@ -513,7 +513,7 @@ export const getAvailableEvents = async (
     });
   } catch (error) {
     logger.error('Error getting available events:', error);
-    reply.status(500).send({
+    return reply.status(500).send({
       success: false,
       error: 'Internal server error'
     });
@@ -541,7 +541,7 @@ export const verifySignature = async (
     });
   } catch (error) {
     logger.error('Error verifying signature:', error);
-    reply.status(500).send({
+    return reply.status(500).send({
       success: false,
       error: 'Internal server error'
     });

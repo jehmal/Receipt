@@ -41,13 +41,15 @@ class ReceiptAdapter extends TypeAdapter<Receipt> {
       localImagePath: fields[21] as String?,
       isSynced: fields[22] as bool,
       syncError: fields[23] as String?,
+      jobNumber: fields[24] as String?,
+      imageUrl: fields[25] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Receipt obj) {
     writer
-      ..writeByte(24)
+      ..writeByte(26)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -95,7 +97,11 @@ class ReceiptAdapter extends TypeAdapter<Receipt> {
       ..writeByte(22)
       ..write(obj.isSynced)
       ..writeByte(23)
-      ..write(obj.syncError);
+      ..write(obj.syncError)
+      ..writeByte(24)
+      ..write(obj.jobNumber)
+      ..writeByte(25)
+      ..write(obj.imageUrl);
   }
 
   @override
@@ -139,6 +145,8 @@ Receipt _$ReceiptFromJson(Map<String, dynamic> json) => Receipt(
       ocrConfidence: (json['ocrConfidence'] as num?)?.toDouble(),
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
+      jobNumber: json['jobNumber'] as String?,
+      imageUrl: json['imageUrl'] as String?,
     );
 
 Map<String, dynamic> _$ReceiptToJson(Receipt instance) => <String, dynamic>{
@@ -163,4 +171,6 @@ Map<String, dynamic> _$ReceiptToJson(Receipt instance) => <String, dynamic>{
       'ocrConfidence': instance.ocrConfidence,
       'createdAt': instance.createdAt.toIso8601String(),
       'updatedAt': instance.updatedAt.toIso8601String(),
+      'jobNumber': instance.jobNumber,
+      'imageUrl': instance.imageUrl,
     };

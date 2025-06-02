@@ -1,0 +1,359 @@
+# Receipt Vault Pro - Pull Request Validation
+# Fast feedback pipeline for pull requests
+
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+env:
+  NODE_VERSION: '18'
+  FLUTTER_VERSION: '3.16.0'
+
+jobs:
+  # Quick validation for fast feedback
+  quick-validation:
+    name: Quick Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Detect changes
+      uses: dorny/paths-filter@v2
+      id: changes
+      with:
+        filters: |
+          backend:
+            - 'backend/**'
+          mobile:
+            - 'mobile/**'
+          terraform:
+            - 'terraform/**'
+          docs:
+            - 'docs/**'
+            - '*.md'
+
+    - name: Setup Node.js
+      if: steps.changes.outputs.backend == 'true'
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: backend/package-lock.json
+
+    - name: Quick backend checks
+      if: steps.changes.outputs.backend == 'true'
+      run: |
+        cd backend
+        npm ci
+        npm run lint
+        npm run type-check
+
+    - name: Setup Flutter
+      if: steps.changes.outputs.mobile == 'true'
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ env.FLUTTER_VERSION }}
+        cache: true
+
+    - name: Quick mobile checks
+      if: steps.changes.outputs.mobile == 'true'
+      run: |
+        cd mobile
+        flutter pub get
+        flutter analyze
+        flutter test --no-coverage
+
+    - name: Terraform validation
+      if: steps.changes.outputs.terraform == 'true'
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: '1.6.0'
+
+    - name: Terraform checks
+      if: steps.changes.outputs.terraform == 'true'
+      run: |
+        cd terraform
+        terraform fmt -check -recursive
+        terraform init -backend=false
+        terraform validate
+
+  # Security checks
+  security-check:
+    name: Security Check
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Snyk vulnerability scan
+      uses: snyk/actions/node@master
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        args: --severity-threshold=medium --file=backend/package.json
+
+    - name: Check for secrets
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: main
+        head: HEAD
+
+  # Build verification
+  build-check:
+    name: Build Verification
+    runs-on: ubuntu-latest
+    needs: quick-validation
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Detect changes
+      uses: dorny/paths-filter@v2
+      id: changes
+      with:
+        filters: |
+          backend:
+            - 'backend/**'
+          mobile:
+            - 'mobile/**'
+
+    - name: Setup Node.js
+      if: steps.changes.outputs.backend == 'true'
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: backend/package-lock.json
+
+    - name: Build backend
+      if: steps.changes.outputs.backend == 'true'
+      run: |
+        cd backend
+        npm ci
+        npm run build
+
+    - name: Setup Flutter
+      if: steps.changes.outputs.mobile == 'true'
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ env.FLUTTER_VERSION }}
+        cache: true
+
+    - name: Build mobile
+      if: steps.changes.outputs.mobile == 'true'
+      run: |
+        cd mobile
+        flutter pub get
+        flutter packages pub run build_runner build --delete-conflicting-outputs
+        flutter build apk --debug
+
+  # API compatibility check
+  api-compatibility:
+    name: API Compatibility Check
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.changed_files, 'backend/')
+    
+    steps:
+    - name: Checkout base branch
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.base_ref }}
+        path: base
+
+    - name: Checkout PR branch
+      uses: actions/checkout@v4
+      with:
+        path: current
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+
+    - name: Generate API schemas
+      run: |
+        # Generate OpenAPI schema from base branch
+        cd base/backend
+        npm ci
+        npm run generate:openapi
+        cp openapi.json ../base-api.json
+        
+        # Generate OpenAPI schema from current branch
+        cd ../../current/backend
+        npm ci
+        npm run generate:openapi
+        cp openapi.json ../current-api.json
+
+    - name: Check API compatibility
+      uses: oasdiff/oasdiff-action/breaking@main
+      with:
+        base: base/base-api.json
+        revision: current/current-api.json
+        fail-on-diff: true
+
+  # Performance impact assessment
+  performance-check:
+    name: Performance Impact Check
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.changed_files, 'backend/')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: backend/package-lock.json
+
+    - name: Install dependencies
+      run: |
+        cd backend
+        npm ci
+
+    - name: Run performance benchmarks
+      run: |
+        cd backend
+        npm run benchmark
+
+    - name: Comment performance results
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          try {
+            const results = fs.readFileSync('backend/benchmark-results.json', 'utf8');
+            const data = JSON.parse(results);
+            
+            const comment = `## 📊 Performance Impact
+            
+            | Metric | Before | After | Change |
+            |--------|--------|-------|--------|
+            | API Response Time | ${data.before.apiResponse}ms | ${data.after.apiResponse}ms | ${data.change.apiResponse} |
+            | Memory Usage | ${data.before.memory}MB | ${data.after.memory}MB | ${data.change.memory} |
+            | CPU Usage | ${data.before.cpu}% | ${data.after.cpu}% | ${data.change.cpu} |
+            
+            ${data.summary}`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+          } catch (error) {
+            console.log('No performance results to report');
+          }
+
+  # Mobile UI tests
+  mobile-ui-tests:
+    name: Mobile UI Tests
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.changed_files, 'mobile/')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ env.FLUTTER_VERSION }}
+        cache: true
+
+    - name: Install dependencies
+      run: |
+        cd mobile
+        flutter pub get
+
+    - name: Run widget tests
+      run: |
+        cd mobile
+        flutter test --coverage
+
+    - name: Run integration tests
+      run: |
+        cd mobile
+        flutter drive \
+          --driver=test_driver/integration_test.dart \
+          --target=integration_test/app_test.dart
+
+  # Documentation check
+  docs-check:
+    name: Documentation Check
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.changed_files, 'docs/') || contains(github.event.pull_request.changed_files, '*.md')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Lint markdown files
+      uses: articulate/actions-markdownlint@v1
+      with:
+        config: .markdownlint.json
+        files: '**/*.md'
+
+    - name: Check links
+      uses: gaurav-nelson/github-action-markdown-link-check@v1
+      with:
+        use-quiet-mode: 'yes'
+        use-verbose-mode: 'yes'
+        config-file: '.markdown-link-check.json'
+
+  # Final PR status check
+  pr-status:
+    name: PR Status Check
+    runs-on: ubuntu-latest
+    needs: [quick-validation, security-check, build-check]
+    if: always()
+    
+    steps:
+    - name: Check PR status
+      run: |
+        if [[ "${{ needs.quick-validation.result }}" == "failure" ]]; then
+          echo "❌ Quick validation failed"
+          exit 1
+        fi
+        
+        if [[ "${{ needs.build-check.result }}" == "failure" ]]; then
+          echo "❌ Build check failed"
+          exit 1
+        fi
+        
+        echo "✅ All checks passed! PR is ready for review."
+
+    - name: Comment PR status
+      uses: actions/github-script@v7
+      if: always()
+      with:
+        script: |
+          const status = '${{ needs.quick-validation.result }}' === 'success' && 
+                        '${{ needs.build-check.result }}' === 'success' ? '✅' : '❌';
+          
+          const comment = `## ${status} PR Validation Results
+          
+          | Check | Status |
+          |-------|---------|
+          | Quick Validation | ${{ needs.quick-validation.result }} |
+          | Security Check | ${{ needs.security-check.result }} |
+          | Build Check | ${{ needs.build-check.result }} |
+          
+          ${status === '✅' ? 'All checks passed! This PR is ready for review.' : 'Some checks failed. Please review and fix the issues.'}`;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
