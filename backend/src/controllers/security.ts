@@ -433,7 +433,7 @@ export const securityController = {
       const user = request.user;
       const { sessionId } = request.params;
 
-      await sessionService.revokeSession(sessionId);
+await sessionService.revokeSession(sessionId, (user as any).id);
 
       // Log session revocation
       await auditService.logAction({
@@ -597,10 +597,24 @@ export const securityController = {
         });
       }
 
-      const result = {
-        success: true,
-        message: 'Password changed successfully'
-      };
+await securityService.changePassword(
+  (user as any).id,
+  currentPassword,
+  newPassword,
+  twoFactorToken
+);
+
+await securityService.changePassword(
+  (user as any).id,
+  currentPassword,
+  newPassword,
+  twoFactorToken
+);
+
+const result = {
+  success: true,
+  message: 'Password changed successfully'
+};
 
       // Log password change
       await auditService.logAction({

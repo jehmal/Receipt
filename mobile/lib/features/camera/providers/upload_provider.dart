@@ -16,8 +16,12 @@ class UploadNotifier extends _$UploadNotifier {
   @override
   UploadState build() => UploadState.idle();
 
-  Future<void> uploadReceipt(String imagePath, {
-    String? description,
+  Future<void> uploadReceipt({
+    required String imagePath,
+    required String category,
+    String? comment,
+    String? voiceMemoPath,
+    String? jobNumber,
     List<String> tags = const [],
   }) async {
     try {
@@ -34,11 +38,18 @@ class UploadNotifier extends _$UploadNotifier {
           filename: 'receipt_${DateTime.now().millisecondsSinceEpoch}.jpg',
         ),
         'metadata': jsonEncode({
-          'description': description,
+          'description': comment,
+          'category': category,
           'tags': tags,
           'fileHash': fileHash,
+          'jobNumber': jobNumber,
           'capturedAt': DateTime.now().toIso8601String(),
         }),
+        if (voiceMemoPath != null)
+          'voiceMemo': await MultipartFile.fromFile(
+            voiceMemoPath,
+            filename: 'voice_memo_${DateTime.now().millisecondsSinceEpoch}.mp3',
+          ),
       });
 
       // Upload with progress tracking
@@ -73,7 +84,7 @@ class UploadNotifier extends _$UploadNotifier {
       state = UploadState.error(message: e.toString());
       
       // Save for retry later
-      await _saveFailedUpload(imagePath, description, tags);
+      await _saveFailedUpload(imagePath, comment, category, voiceMemoPath, jobNumber, tags);
     }
   }
 
@@ -85,8 +96,11 @@ class UploadNotifier extends _$UploadNotifier {
       final failedUpload = await _getFailedUpload(uploadId);
       if (failedUpload != null) {
         await uploadReceipt(
-          failedUpload.imagePath,
-          description: failedUpload.description,
+          imagePath: failedUpload.imagePath,
+          category: failedUpload.category,
+          comment: failedUpload.comment,
+          voiceMemoPath: failedUpload.voiceMemoPath,
+          jobNumber: failedUpload.jobNumber,
           tags: failedUpload.tags,
         );
         
@@ -114,7 +128,10 @@ class UploadNotifier extends _$UploadNotifier {
 
   Future<void> _saveFailedUpload(
     String imagePath,
-    String? description,
+    String? comment,
+    String category,
+    String? voiceMemoPath,
+    String? jobNumber,
     List<String> tags,
   ) async {
     // Save failed upload for retry later
@@ -201,6 +218,44 @@ sealed class UploadState {
   factory UploadState.uploading({required double progress}) = UploadUploadingState;
   factory UploadState.success({required Receipt receipt}) = UploadSuccessState;
   factory UploadState.error({required String message}) = UploadErrorState;
+  
+  // Convenience getters
+  bool get isIdle => this is UploadIdleState;
+  bool get isUploading => this is UploadUploadingState;
+  bool get isSuccess => this is UploadSuccessState;
+  bool get isError => this is UploadErrorState;
+  
+  double get progress {
+    if (this is UploadUploadingState) {
+      return (this as UploadUploadingState).progress;
+    }
+    if (this is UploadSuccessState) {
+      return 1.0;
+    }
+    return 0.0;
+  }
+  
+  String get status {
+    if (this is UploadIdleState) return 'Ready';
+    if (this is UploadUploadingState) return 'Uploading...';
+    if (this is UploadSuccessState) return 'Success';
+    if (this is UploadErrorState) return 'Error';
+    return 'Unknown';
+  }
+  
+  String? get errorMessage {
+    if (this is UploadErrorState) {
+      return (this as UploadErrorState).message;
+    }
+    return null;
+  }
+  
+  Receipt? get receipt {
+    if (this is UploadSuccessState) {
+      return (this as UploadSuccessState).receipt;
+    }
+    return null;
+  }
 }
 
 class UploadIdleState extends UploadState {
@@ -268,7 +323,10 @@ enum UploadStatus {
 class FailedUpload {
   final String id;
   final String imagePath;
-  final String? description;
+  final String? comment;
+  final String category;
+  final String? voiceMemoPath;
+  final String? jobNumber;
   final List<String> tags;
   final DateTime failedAt;
   final String errorMessage;
@@ -276,7 +334,10 @@ class FailedUpload {
   const FailedUpload({
     required this.id,
     required this.imagePath,
-    this.description,
+    this.comment,
+    required this.category,
+    this.voiceMemoPath,
+    this.jobNumber,
     required this.tags,
     required this.failedAt,
     required this.errorMessage,

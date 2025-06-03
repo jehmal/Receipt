@@ -1,117 +1,207 @@
 import 'package:flutter/material.dart';
+import '../../../core/config/app_theme.dart';
 
-class CameraOverlay extends StatelessWidget {
+class CameraOverlay extends StatefulWidget {
   const CameraOverlay({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        // Receipt frame overlay
-        Center(
-          child: Container(
-            width: MediaQuery.of(context).size.width * 0.8,
-            height: MediaQuery.of(context).size.height * 0.5,
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: Colors.white.withOpacity(0.8),
-                width: 2,
-              ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: CustomPaint(
-              painter: CornerPainter(),
-            ),
-          ),
-        ),
-        
-        // Instruction text
-        Positioned(
-          top: 100,
-          left: 0,
-          right: 0,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            margin: const EdgeInsets.symmetric(horizontal: 32),
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.7),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Text(
-              'Position receipt within the frame',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+  State<CameraOverlay> createState() => _CameraOverlayState();
 }
 
-class CornerPainter extends CustomPainter {
+class _CameraOverlayState extends State<CameraOverlay>
+    with TickerProviderStateMixin {
+  late AnimationController _scanlineController;
+  late Animation<double> _scanlineAnimation;
+  late AnimationController _cornerController;
+  late Animation<double> _cornerAnimation;
+
   @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white
-      ..strokeWidth = 3
-      ..style = PaintingStyle.stroke;
-
-    const cornerLength = 20.0;
-
-    // Top-left corner
-    canvas.drawLine(
-      const Offset(0, cornerLength),
-      const Offset(0, 0),
-      paint,
+  void initState() {
+    super.initState();
+    
+    _scanlineController = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
     );
-    canvas.drawLine(
-      const Offset(0, 0),
-      const Offset(cornerLength, 0),
-      paint,
+    
+    _cornerController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
     );
-
-    // Top-right corner
-    canvas.drawLine(
-      Offset(size.width - cornerLength, 0),
-      Offset(size.width, 0),
-      paint,
-    );
-    canvas.drawLine(
-      Offset(size.width, 0),
-      Offset(size.width, cornerLength),
-      paint,
-    );
-
-    // Bottom-left corner
-    canvas.drawLine(
-      const Offset(0, cornerLength),
-      const Offset(0, 0),
-      paint,
-    );
-    canvas.drawLine(
-      const Offset(0, 0),
-      const Offset(cornerLength, 0),
-      paint,
-    );
-
-    // Bottom-right corner
-    canvas.drawLine(
-      Offset(size.width - cornerLength, size.height),
-      Offset(size.width, size.height),
-      paint,
-    );
-    canvas.drawLine(
-      Offset(size.width, size.height),
-      Offset(size.width, size.height - cornerLength),
-      paint,
-    );
+    
+    _scanlineAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _scanlineController,
+      curve: Curves.easeInOut,
+    ));
+    
+    _cornerAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _cornerController,
+      curve: Curves.easeInOut,
+    ));
+    
+    _scanlineController.repeat(reverse: true);
+    _cornerController.repeat(reverse: true);
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  void dispose() {
+    _scanlineController.dispose();
+    _cornerController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final overlayWidth = screenSize.width * 0.8;
+    final overlayHeight = overlayWidth * 0.7; // Receipt aspect ratio
+    return Center(
+      child: SizedBox(
+        width: overlayWidth,
+        height: overlayHeight,
+        child: AnimatedBuilder(
+          animation: Listenable.merge([_scanlineAnimation, _cornerAnimation]),
+          builder: (context, child) {
+            return Stack(
+              children: [
+                // Main frame
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.8),
+                      width: 2,
+                    ),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                  ),
+                ),
+                
+                // Animated corners
+                _buildAnimatedCorner(
+                  alignment: Alignment.topLeft,
+                  angle: 0,
+                ),
+                _buildAnimatedCorner(
+                  alignment: Alignment.topRight,
+                  angle: 1.5708, // 90 degrees
+                ),
+                _buildAnimatedCorner(
+                  alignment: Alignment.bottomLeft,
+                  angle: -1.5708, // -90 degrees
+                ),
+                _buildAnimatedCorner(
+                  alignment: Alignment.bottomRight,
+                  angle: 3.14159, // 180 degrees
+                ),
+                
+                // Scanning line effect
+                Positioned(
+                  top: overlayHeight * _scanlineAnimation.value * 0.8,
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                    height: 2,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.transparent,
+                          AppTheme.success.withOpacity(0.8),
+                          Colors.transparent,
+                        ],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.success.withOpacity(0.5),
+                          blurRadius: 4,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                
+                // Center instruction
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppTheme.spacingM,
+                      vertical: AppTheme.spacingS,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.6),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusL),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.crop_free,
+                          color: Colors.white,
+                          size: 32,
+                        ),
+                        const SizedBox(height: AppTheme.spacingS),
+                        Text(
+                          'Align receipt within frame',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        Text(
+                          'Auto-crop will detect edges',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Colors.white.withOpacity(0.8),
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildAnimatedCorner({
+    required Alignment alignment,
+    required double angle,
+  }) {
+    return Positioned.fill(
+      child: Align(
+        alignment: alignment,
+        child: Transform.rotate(
+          angle: angle,
+          child: Transform.scale(
+            scale: _cornerAnimation.value,
+            child: Container(
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(
+                    color: AppTheme.success,
+                    width: 3,
+                  ),
+                  left: BorderSide(
+                    color: AppTheme.success,
+                    width: 3,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

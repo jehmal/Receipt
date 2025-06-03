@@ -97,7 +97,13 @@
       "Bash(docker build:*)",
       "Bash(docker:*)",
       "Bash(\"/mnt/c/Program Files/Docker/Docker/resources/bin/docker\" --version)",
-      "Bash(powershell.exe:*)"
+      "Bash(powershell.exe:*)",
+      "mcp__filesystem__directory_tree",
+      "mcp__filesystem__read_multiple_files",
+      "Bash(flutter:*)",
+      "Bash(sudo apt:*)",
+      "Bash(sudo apt install:*)",
+      "Bash(python3:*)"
     ],
     "deny": []
   }

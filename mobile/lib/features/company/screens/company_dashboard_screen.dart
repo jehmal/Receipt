@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
+import '../../../core/auth/enhanced_auth_provider.dart';
+import '../../../core/config/app_theme.dart';
 import '../providers/company_analytics_provider.dart';
 import '../widgets/expense_summary_card.dart';
 import '../widgets/category_breakdown_chart.dart';
@@ -84,10 +86,34 @@ class _CompanyDashboardScreenState extends ConsumerState<CompanyDashboardScreen>
                 ],
               ),
               
-              // Export options
-              IconButton(
-                onPressed: () => _showExportOptions(context),
-                icon: const Icon(Icons.download),
+              // Export options (admin only)
+              Consumer(
+                builder: (context, ref, child) {
+                  final hasExportPermission = ref.watch(enhancedAuthProvider.notifier)
+                      .hasCompanyPermission('export_reports');
+                  if (!hasExportPermission) return const SizedBox.shrink();
+                  
+                  return IconButton(
+                    onPressed: () => _showExportOptions(context),
+                    icon: const Icon(Icons.download),
+                    tooltip: 'Export Reports',
+                  );
+                },
+              ),
+              
+              // Settings (admin only)
+              Consumer(
+                builder: (context, ref, child) {
+                  final hasManagePermission = ref.watch(enhancedAuthProvider.notifier)
+                      .hasCompanyPermission('manage_employees');
+                  if (!hasManagePermission) return const SizedBox.shrink();
+                  
+                  return IconButton(
+                    onPressed: () => _navigateToSettings(context),
+                    icon: const Icon(Icons.settings),
+                    tooltip: 'Company Settings',
+                  );
+                },
               ),
             ],
             bottom: TabBar(
@@ -335,29 +361,66 @@ class _CompanyDashboardScreenState extends ConsumerState<CompanyDashboardScreen>
 
               const SizedBox(height: 24),
 
-              // Team activity
-              Text(
-                'Recent Activity',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              TeamActivityWidget(
-                activities: (analytics.teamActivity as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [],
+              // Team activity (admin can see all, employees see limited)
+              Consumer(
+                builder: (context, ref, child) {
+                  final hasViewAllPermission = ref.watch(enhancedAuthProvider.notifier)
+                      .hasCompanyPermission('view_all_company_data');
+                  
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            hasViewAllPermission ? 'Team Activity' : 'My Activity',
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          if (hasViewAllPermission) ...[
+                            const Spacer(),
+                            TextButton.icon(
+                              onPressed: () => _navigateToTeamManagement(context),
+                              icon: const Icon(Icons.manage_accounts),
+                              label: const Text('Manage Team'),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      TeamActivityWidget(
+                        activities: (analytics.teamActivity as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [],
+                      ),
+                    ],
+                  );
+                },
               ),
 
               const SizedBox(height: 24),
 
-              // Top spenders
-              Text(
-                'Top Spenders',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+              // Top spenders (admin only)
+              Consumer(
+                builder: (context, ref, child) {
+                  final hasViewAllPermission = ref.watch(enhancedAuthProvider.notifier)
+                      .hasCompanyPermission('view_all_company_data');
+                  if (!hasViewAllPermission) return const SizedBox.shrink();
+                  
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Top Spenders',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildTopSpendersList(analytics.topSpenders),
+                    ],
+                  );
+                },
               ),
-              const SizedBox(height: 16),
-              _buildTopSpendersList(analytics.topSpenders),
             ],
           ),
         ),
@@ -511,8 +574,18 @@ class _CompanyDashboardScreenState extends ConsumerState<CompanyDashboardScreen>
   void _showExportOptions(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) => const ExportOptionsSheet(),
     );
+  }
+  
+  void _navigateToSettings(BuildContext context) {
+    Navigator.of(context).pushNamed('/company-settings');
+  }
+  
+  void _navigateToTeamManagement(BuildContext context) {
+    Navigator.of(context).pushNamed('/team-management');
   }
 
   void _exportData(ExportFormat format, DateRange period) {

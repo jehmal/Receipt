@@ -1,17 +1,19 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:math';
 import 'package:crypto/crypto.dart';
 
 class EncryptionService {
-  static const String _defaultKey = 'receipt-vault-encryption-key';
+  // Default key for basic encryption - in production, use proper key management
+  static const String _defaultKey = 'receipt_vault_default_key_2024';
 
-  /// Encrypt data using basic encoding
+  /// Encrypt data using basic XOR encryption
   static String encrypt(String data, {String? key}) {
     final keyToUse = key ?? _defaultKey;
     final bytes = utf8.encode(data);
     final keyBytes = utf8.encode(keyToUse);
     
-    // Simple XOR encryption for demonstration
+    // Simple XOR encryption
     final encrypted = <int>[];
     for (int i = 0; i < bytes.length; i++) {
       encrypted.add(bytes[i] ^ keyBytes[i % keyBytes.length]);
@@ -20,7 +22,7 @@ class EncryptionService {
     return base64.encode(encrypted);
   }
 
-  /// Decrypt data using basic decoding
+  /// Decrypt data using basic XOR decoding
   static String decrypt(String encryptedData, {String? key}) {
     final keyToUse = key ?? _defaultKey;
     final encrypted = base64.decode(encryptedData);
@@ -77,7 +79,40 @@ class EncryptionService {
 
   /// Generate a random key
   static String generateKey() {
-    final timestamp = DateTime.now().millisecondsSinceEpoch.toString();
-    return hash(timestamp).substring(0, 32);
+    final random = Random.secure();
+    final bytes = List<int>.generate(32, (i) => random.nextInt(256));
+    return base64.encode(bytes);
+  }
+
+  /// Hash password with salt
+  static String hashPassword(String password, [String? salt]) {
+    final saltToUse = salt ?? generateSalt();
+    final combined = password + saltToUse;
+    final bytes = utf8.encode(combined);
+    final digest = sha256.convert(bytes);
+    return '${digest.toString()}:$saltToUse';
+  }
+
+  /// Generate a random salt
+  static String generateSalt() {
+    final random = Random.secure();
+    final bytes = List<int>.generate(16, (i) => random.nextInt(256));
+    return base64.encode(bytes);
+  }
+
+  /// Verify password against hash
+  static bool verifyPassword(String password, String hashedPassword) {
+    try {
+      final parts = hashedPassword.split(':');
+      if (parts.length != 2) return false;
+      
+      final hash = parts[0];
+      final salt = parts[1];
+      
+      final newHash = hashPassword(password, salt);
+      return newHash == hashedPassword;
+    } catch (e) {
+      return false;
+    }
   }
 }

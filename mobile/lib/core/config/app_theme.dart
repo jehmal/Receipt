@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class AppTheme {
-  // Primary brand colors
-  static const Color primaryColor = Color(0xFF2563EB); // Blue
-  static const Color secondaryColor = Color(0xFF10B981); // Green
-  static const Color accentColor = Color(0xFF8B5CF6); // Purple
+  // Primary brand colors - Inspired by Uber's clean design
+  static const Color primaryColor = Color(0xFF000000); // Deep Black for minimal look
+  static const Color secondaryColor = Color(0xFF10B981); // Green for success states
+  static const Color accentColor = Color(0xFF3B82F6); // Blue for accents
+  static const Color captureButtonColor = Color(0xFF1F2937); // Dark gray for capture button
   
   // Text colors
   static const Color textPrimary = Color(0xFF1F2937);
@@ -22,6 +24,13 @@ class AppTheme {
   static const Color warning = Color(0xFFF59E0B);
   static const Color error = Color(0xFFEF4444);
   static const Color info = Color(0xFF3B82F6);
+  
+  // Receipt Vault Pro specific colors
+  static const Color uploadProgressColor = Color(0xFF6366F1);
+  static const Color syncIndicatorColor = Color(0xFFFBBF24);
+  static const Color offlineIndicatorColor = Color(0xFF94A3B8);
+  static const Color companyModeColor = Color(0xFF8B5CF6);
+  static const Color personalModeColor = Color(0xFF059669);
 
   static ThemeData get lightTheme {
     return ThemeData(
@@ -98,6 +107,12 @@ class AppTheme {
         unselectedItemColor: textSecondary,
         type: BottomNavigationBarType.fixed,
         elevation: 8,
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: captureButtonColor,
+        foregroundColor: Colors.white,
+        elevation: 6,
+        shape: CircleBorder(),
       ),
     );
   }
@@ -178,6 +193,43 @@ class AppTheme {
         type: BottomNavigationBarType.fixed,
         elevation: 8,
       ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: captureButtonColor,
+        foregroundColor: Colors.white,
+        elevation: 6,
+        shape: CircleBorder(),
+      ),
     );
   }
+  
+  // Animation curves for smooth transitions
+  static const Curve defaultCurve = Curves.easeInOutCubic;
+  static const Curve fastCurve = Curves.easeOutQuart;
+  static const Curve slowCurve = Curves.easeInOutQuint;
+  
+  // Haptic feedback helper
+  static void lightHaptic() => HapticFeedback.lightImpact();
+  static void mediumHaptic() => HapticFeedback.mediumImpact();
+  static void heavyHaptic() => HapticFeedback.heavyImpact();
+  static void selectionHaptic() => HapticFeedback.selectionClick();
+  
+  // Animation durations
+  static const Duration fastAnimation = Duration(milliseconds: 200);
+  static const Duration normalAnimation = Duration(milliseconds: 300);
+  static const Duration slowAnimation = Duration(milliseconds: 500);
+  
+  // Spacing constants
+  static const double spacingXS = 4.0;
+  static const double spacingS = 8.0;
+  static const double spacingM = 16.0;
+  static const double spacingL = 24.0;
+  static const double spacingXL = 32.0;
+  static const double spacingXXL = 48.0;
+  
+  // Border radius constants
+  static const double radiusS = 4.0;
+  static const double radiusM = 8.0;
+  static const double radiusL = 12.0;
+  static const double radiusXL = 16.0;
+  static const double radiusCircle = 999.0;
 }

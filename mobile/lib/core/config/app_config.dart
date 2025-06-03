@@ -37,8 +37,25 @@ class AppConfig {
   }
 
   // App configuration constants
-  static const String appName = 'Receipt Vault';
+  static const String appName = 'Receipt Vault Pro';
   static const String version = '1.0.0';
+  
+  // UI/UX Configuration for enhanced experience
+  static const bool enableAnimations = true;
+  static const bool enableHapticFeedback = true;
+  static const double largeCaptureButtonSize = 120.0;
+  
+  // Business Logic Configuration
+  static const List<String> receiptCategories = [
+    'Fuel',
+    'Tools',
+    'Parts',
+    'Parking',
+    'Warranty',
+    'Office Supplies',
+    'Travel',
+    'Meals'
+  ];
   
   // API configuration
   static const int requestTimeoutSeconds = 30;
@@ -106,8 +123,31 @@ class AppConfig {
   static const Duration cacheTimeout = Duration(hours: 24);
   static const int maxCacheItems = 1000;
   
-  // UI settings
+  // UI settings - Enhanced for Receipt Vault Pro
   static const Duration animationDuration = Duration(milliseconds: 300);
+  static const Duration heroAnimationDuration = Duration(milliseconds: 500);
   static const double borderRadius = 8.0;
   static const double spacing = 16.0;
+  
+  // Voice memo configuration
+  static const int maxVoiceMemoSeconds = 60;
+  static const bool enableVoiceTranscription = true;
+  
+  // Company mode settings
+  static const bool enableCompanyMode = true;
+  static const bool enableMultiTenant = true;
+  
+  // Export settings
+  static const List<String> exportFormats = ['PDF', 'CSV', 'Excel'];
+  
+  // Warranty tracking
+  static const bool enableWarrantyTracking = true;
+  static const int warrantyExpiryNotificationDays = 30;
+  
+  // Offline sync configuration
+  static const Duration syncRetryDelay = Duration(seconds: 30);
+  static const int maxSyncRetries = 5;
+  
+  // Theme configuration
+  static const String defaultTheme = 'system'; // 'light', 'dark', 'system'
 }
